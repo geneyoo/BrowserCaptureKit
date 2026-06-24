@@ -328,10 +328,40 @@ enum CaptureScript {
                     });
                   }
 
+                  function installViewportCapture() {
+                    if (window !== window.top || typeof window.addEventListener !== "function") {
+                      return;
+                    }
+
+                    let timeout = null;
+                    const schedule = (reason) => {
+                      if (timeout !== null) {
+                        clearTimeout(timeout);
+                      }
+                      timeout = setTimeout(() => {
+                        timeout = null;
+                        post({
+                          kind: "viewportChanged",
+                          reason,
+                          url: String(window.location && window.location.href || ""),
+                          title: String(document.title || "")
+                        });
+                      }, 180);
+                    };
+
+                    window.addEventListener("scroll", () => schedule("scroll"), { passive: true });
+                    window.addEventListener("resize", () => schedule("resize"));
+                    if (window.visualViewport) {
+                      window.visualViewport.addEventListener("scroll", () => schedule("visualViewportScroll"), { passive: true });
+                      window.visualViewport.addEventListener("resize", () => schedule("visualViewportResize"));
+                    }
+                  }
+
                   try {
                     installFetchCapture();
                     installXHRCapture();
                     installConsoleCapture();
+                    installViewportCapture();
                     post({ kind: "console", level: "debug", message: "BrowserCaptureKit installed" });
                   } catch (error) {
                     post({

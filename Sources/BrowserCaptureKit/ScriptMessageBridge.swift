@@ -4,6 +4,7 @@ import WebKit
 @MainActor
 final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
     var onEvent: ((BrowserCaptureEvent) -> Void)?
+    var onViewportChanged: ((String?) -> Void)?
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else {
@@ -20,6 +21,8 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
             handleConsole(body: body, capturedAt: capturedAt)
         case "scriptError":
             handleScriptError(body: body, capturedAt: capturedAt)
+        case "viewportChanged":
+            onViewportChanged?(string(body["reason"]))
         default:
             onEvent?(.scriptError(BrowserScriptError(capturedAt: capturedAt, message: "Received unknown script message kind.")))
         }
