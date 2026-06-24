@@ -103,6 +103,89 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
+    @discardableResult
+    public func clickElement(label: String, role: String? = nil) async -> BrowserActionResult {
+        guard let webView else {
+            return BrowserActionResult(
+                kind: .click,
+                succeeded: false,
+                message: "No WKWebView is attached.",
+                label: label,
+                role: role
+            )
+        }
+
+        do {
+            let result = try await webView.evaluateJavaScript(
+                BrowserActionScript.clickElementSource(label: label, role: role)
+            )
+            guard let payload = result as? [String: Any] else {
+                return BrowserActionResult(
+                    kind: .click,
+                    succeeded: false,
+                    message: "Click script returned a non-object result.",
+                    label: label,
+                    role: role
+                )
+            }
+
+            let actionResult = BrowserActionResult(
+                kind: .click,
+                succeeded: bool(payload["succeeded"]) ?? false,
+                message: string(payload["message"]) ?? "Click action finished.",
+                matchedElementCount: int(payload["matchedElementCount"]) ?? 0,
+                label: string(payload["label"]) ?? label,
+                role: string(payload["role"]) ?? role,
+                path: string(payload["path"])
+            )
+            captureAccessibilitySnapshot(reason: "action:click")
+            return actionResult
+        } catch {
+            return BrowserActionResult(
+                kind: .click,
+                succeeded: false,
+                message: error.localizedDescription,
+                label: label,
+                role: role
+            )
+        }
+    }
+
+    @discardableResult
+    public func scrollBy(deltaX: Double = 0, deltaY: Double) -> BrowserActionResult {
+        guard let scrollView = webView?.scrollView else {
+            return BrowserActionResult(
+                kind: .scroll,
+                succeeded: false,
+                message: "No WKWebView is attached."
+            )
+        }
+
+        let inset = scrollView.adjustedContentInset
+        let minimumX = -inset.left
+        let minimumY = -inset.top
+        let maximumX = max(
+            minimumX,
+            scrollView.contentSize.width - scrollView.bounds.width + inset.right
+        )
+        let maximumY = max(
+            minimumY,
+            scrollView.contentSize.height - scrollView.bounds.height + inset.bottom
+        )
+        let target = CGPoint(
+            x: min(max(scrollView.contentOffset.x + deltaX, minimumX), maximumX),
+            y: min(max(scrollView.contentOffset.y + deltaY, minimumY), maximumY)
+        )
+
+        scrollView.setContentOffset(target, animated: true)
+        captureAccessibilitySnapshot(reason: "action:scroll")
+        return BrowserActionResult(
+            kind: .scroll,
+            succeeded: true,
+            message: "Scrolled to x=\(Int(target.x)) y=\(Int(target.y))."
+        )
+    }
+
     private func websiteDataStore() -> WKWebsiteDataStore {
         switch configuration.storageMode {
         case .nonPersistent:
