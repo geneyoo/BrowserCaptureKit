@@ -12,7 +12,9 @@ public struct BrowserCaptureWebView: UIViewRepresentable {
 
     public func makeUIView(context: Context) -> WKWebView {
         let webView = session.makeWebView()
-        webView.load(URLRequest(url: initialURL))
+        if webView.url == nil {
+            webView.load(URLRequest(url: initialURL))
+        }
         return webView
     }
 

@@ -17,7 +17,7 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
-    public private(set) weak var webView: WKWebView?
+    public private(set) var webView: WKWebView?
 
     private let messageHandlerName = "browserCapture"
     private let bridge = ScriptMessageBridge()
@@ -31,6 +31,10 @@ public final class BrowserCaptureSession: NSObject {
     }
 
     public func makeWebView() -> WKWebView {
+        if let webView {
+            return webView
+        }
+
         let userContentController = WKUserContentController()
         userContentController.add(bridge, contentWorld: .page, name: messageHandlerName)
         userContentController.addUserScript(
