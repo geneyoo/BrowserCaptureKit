@@ -1,6 +1,6 @@
 import Foundation
 
-// swiftlint:disable function_body_length
+// swiftlint:disable function_body_length type_body_length
 enum CaptureScript {
     static func source(configuration: BrowserCaptureConfiguration, messageHandlerName: String) -> String {
         let options: [String: Any] = [
@@ -122,21 +122,119 @@ enum CaptureScript {
                     }
                   }
 
+                  function normalizeHeaderMap(headers) {
+                    const output = {};
+                    if (!headers) {
+                      return output;
+                    }
+
+                    try {
+                      if (typeof Headers !== "undefined" && headers instanceof Headers && typeof headers.forEach === "function") {
+                        headers.forEach((value, name) => {
+                          output[String(name)] = String(value);
+                        });
+                        return output;
+                      }
+
+                      if (Array.isArray(headers)) {
+                        headers.forEach((entry) => {
+                          if (!entry || entry.length < 2) {
+                            return;
+                          }
+                          output[String(entry[0])] = String(entry[1]);
+                        });
+                        return output;
+                      }
+
+                      if (typeof headers.entries === "function") {
+                        for (const entry of headers.entries()) {
+                          if (!entry || entry.length < 2) {
+                            continue;
+                          }
+                          output[String(entry[0])] = String(entry[1]);
+                        }
+                        return output;
+                      }
+
+                      if (typeof headers === "object") {
+                        Object.keys(headers).forEach((name) => {
+                          output[String(name)] = String(headers[name]);
+                        });
+                      }
+                    } catch (error) {
+                      output.__captureError = String(error && error.message ? error.message : error);
+                    }
+                    return output;
+                  }
+
+                  function parseRawHeaderBlock(rawHeaders) {
+                    const output = {};
+                    String(rawHeaders || "").split(/\\r?\\n/).forEach((line) => {
+                      const separator = line.indexOf(":");
+                      if (separator <= 0) {
+                        return;
+                      }
+                      const name = line.slice(0, separator).trim();
+                      const value = line.slice(separator + 1).trim();
+                      if (!name) {
+                        return;
+                      }
+                      output[name] = output[name] ? `${output[name]}, ${value}` : value;
+                    });
+                    return output;
+                  }
+
+                  function metadataValue(value) {
+                    if (value === undefined || value === null || value === "") {
+                      return null;
+                    }
+                    return String(value);
+                  }
+
+                  function fetchRequestDetails(input, init) {
+                    const request = typeof Request !== "undefined" && input instanceof Request ? input : null;
+                    const headers = Object.assign(
+                      {},
+                      normalizeHeaderMap(request && request.headers),
+                      normalizeHeaderMap(init && init.headers)
+                    );
+                    const metadata = {};
+                    [
+                      ["credentials", init && init.credentials || request && request.credentials],
+                      ["mode", init && init.mode || request && request.mode],
+                      ["cache", init && init.cache || request && request.cache],
+                      ["redirect", init && init.redirect || request && request.redirect],
+                      ["referrer", init && init.referrer || request && request.referrer],
+                      ["referrerPolicy", init && init.referrerPolicy || request && request.referrerPolicy],
+                      ["integrity", init && init.integrity || request && request.integrity],
+                      ["keepalive", init && init.keepalive !== undefined ? init.keepalive : request && request.keepalive],
+                      ["destination", request && request.destination]
+                    ].forEach(([key, value]) => {
+                      const normalized = metadataValue(value);
+                      if (normalized !== null) {
+                        metadata[key] = normalized;
+                      }
+                    });
+                    return { headers, metadata };
+                  }
+
                   async function readResponsePreview(response) {
                     const contentType = headerValue(response.headers, "content-type");
+                    const responseHeaders = normalizeHeaderMap(response.headers);
                     if (!isPreviewableContentType(contentType)) {
-                      return { contentType, bodyPreview: null, truncated: false };
+                      return { contentType, responseHeaders, bodyPreview: null, truncated: false };
                     }
 
                     const clone = response.clone();
                     if (maxChars <= 0) {
-                      return { contentType, bodyPreview: null, truncated: false };
+                      return { contentType, responseHeaders, bodyPreview: null, truncated: false };
                     }
 
                     if (!clone.body || typeof clone.body.getReader !== "function" || typeof TextDecoder === "undefined") {
                       const text = await clone.text();
                       return {
                         contentType,
+                        responseHeaders,
                         bodyPreview: text.length > maxChars ? text.slice(0, maxChars) : text,
                         truncated: text.length > maxChars
                       };
@@ -164,6 +262,7 @@ enum CaptureScript {
                     } catch (error) {
                       return {
                         contentType,
+                        responseHeaders,
                         bodyPreview: text.length > maxChars ? text.slice(0, maxChars) : text,
                         truncated: true,
                         previewError: String(error && error.message ? error.message : error)
@@ -172,6 +271,7 @@ enum CaptureScript {
 
                     return {
                       contentType,
+                      responseHeaders,
                       bodyPreview: text.length > maxChars ? text.slice(0, maxChars) : text,
                       truncated: truncated || text.length > maxChars
                     };
@@ -179,6 +279,7 @@ enum CaptureScript {
 
                   async function captureFetchResponse(input, init, response, startedAt) {
                     try {
+                      const request = fetchRequestDetails(input, init);
                       const preview = await readResponsePreview(response);
                       post({
                         kind: "response",
@@ -188,7 +289,10 @@ enum CaptureScript {
                         status: response.status,
                         statusText: response.statusText || null,
                         contentType: preview.contentType || null,
+                        requestHeaders: request.headers,
+                        requestMetadata: request.metadata,
                         requestBodyPreview: previewValue(init && init.body),
+                        responseHeaders: preview.responseHeaders || {},
                         responseBodyPreview: preview.bodyPreview,
                         responseBodyTruncated: Boolean(preview.truncated),
                         durationMilliseconds: now() - startedAt,
@@ -220,7 +324,10 @@ enum CaptureScript {
                           source: "fetch",
                           method: coerceMethod(input, init),
                           url: coerceURL(input),
+                          requestHeaders: fetchRequestDetails(input, init).headers,
+                          requestMetadata: fetchRequestDetails(input, init).metadata,
                           requestBodyPreview: previewValue(init && init.body),
+                          responseHeaders: {},
                           responseBodyTruncated: false,
                           durationMilliseconds: now() - startedAt,
                           errorDescription: String(error && error.message ? error.message : error)
@@ -237,16 +344,42 @@ enum CaptureScript {
 
                     const OriginalXHR = window.XMLHttpRequest;
                     const originalOpen = OriginalXHR.prototype.open;
+                    const originalSetRequestHeader = OriginalXHR.prototype.setRequestHeader;
                     const originalSend = OriginalXHR.prototype.send;
 
-                    OriginalXHR.prototype.open = function browserCaptureOpen(method, url) {
+                    OriginalXHR.prototype.open = function browserCaptureOpen(method, url, async, username) {
                       this.__browserCapture = {
                         method: String(method || "GET").toUpperCase(),
                         url: coerceURL(url),
                         startedAt: null,
-                        requestBodyPreview: null
+                        requestBodyPreview: null,
+                        requestHeaders: {},
+                        requestMetadata: {
+                          async: metadataValue(async === undefined ? true : async) || "true",
+                          usernameProvided: metadataValue(username !== undefined)
+                        }
                       };
                       return originalOpen.apply(this, arguments);
+                    };
+
+                    OriginalXHR.prototype.setRequestHeader = function browserCaptureSetRequestHeader(name, value) {
+                      const capture = this.__browserCapture || {
+                        method: "GET",
+                        url: "",
+                        startedAt: null,
+                        requestBodyPreview: null,
+                        requestHeaders: {},
+                        requestMetadata: {}
+                      };
+                      const headerName = String(name || "");
+                      const headerValue = String(value || "");
+                      if (headerName) {
+                        capture.requestHeaders[headerName] = capture.requestHeaders[headerName]
+                          ? `${capture.requestHeaders[headerName]}, ${headerValue}`
+                          : headerValue;
+                      }
+                      this.__browserCapture = capture;
+                      return originalSetRequestHeader.apply(this, arguments);
                     };
 
                     OriginalXHR.prototype.send = function browserCaptureSend(body) {
@@ -254,15 +387,22 @@ enum CaptureScript {
                         method: "GET",
                         url: "",
                         startedAt: null,
-                        requestBodyPreview: null
+                        requestBodyPreview: null,
+                        requestHeaders: {},
+                        requestMetadata: {}
                       };
                       capture.startedAt = now();
                       capture.requestBodyPreview = previewValue(body);
+                      capture.requestMetadata = Object.assign({}, capture.requestMetadata || {}, {
+                        withCredentials: String(Boolean(this.withCredentials)),
+                        responseType: String(this.responseType || "")
+                      });
                       this.__browserCapture = capture;
 
                       this.addEventListener("loadend", () => {
                         try {
                           const contentType = this.getResponseHeader("content-type");
+                          const responseHeaders = parseRawHeaderBlock(this.getAllResponseHeaders());
                           let responseBodyPreview = null;
                           let responseBodyTruncated = false;
 
@@ -280,7 +420,10 @@ enum CaptureScript {
                             status: this.status || null,
                             statusText: this.statusText || null,
                             contentType: contentType || null,
+                            requestHeaders: capture.requestHeaders || {},
+                            requestMetadata: capture.requestMetadata || {},
                             requestBodyPreview: capture.requestBodyPreview,
+                            responseHeaders,
                             responseBodyPreview,
                             responseBodyTruncated,
                             durationMilliseconds: capture.startedAt == null ? null : now() - capture.startedAt,
@@ -374,4 +517,4 @@ enum CaptureScript {
             """
     }
 }
-// swiftlint:enable function_body_length
+// swiftlint:enable function_body_length type_body_length

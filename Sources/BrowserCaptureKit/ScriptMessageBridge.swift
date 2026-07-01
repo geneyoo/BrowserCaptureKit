@@ -47,7 +47,10 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
             status: int(body["status"]),
             statusText: string(body["statusText"]),
             contentType: string(body["contentType"]),
+            requestHeaders: stringDictionary(body["requestHeaders"]),
+            requestMetadata: stringDictionary(body["requestMetadata"]),
             requestBodyPreview: string(body["requestBodyPreview"]),
+            responseHeaders: stringDictionary(body["responseHeaders"]),
             responseBodyPreview: string(body["responseBodyPreview"]),
             responseBodyTruncated: bool(body["responseBodyTruncated"]) ?? false,
             durationMilliseconds: double(body["durationMilliseconds"]),
@@ -134,5 +137,22 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
             return value.boolValue
         }
         return nil
+    }
+
+    private func stringDictionary(_ value: Any?) -> [String: String] {
+        guard let dictionary = value as? [String: Any] else {
+            return [:]
+        }
+
+        return dictionary.reduce(into: [:]) { result, entry in
+            guard !(entry.value is NSNull) else {
+                return
+            }
+            if let value = entry.value as? String {
+                result[entry.key] = value
+            } else {
+                result[entry.key] = String(describing: entry.value)
+            }
+        }
     }
 }

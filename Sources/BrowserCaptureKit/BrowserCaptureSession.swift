@@ -139,13 +139,15 @@ public final class BrowserCaptureSession: NSObject {
                 localStorage: [:],
                 sessionStorage: [:],
                 cookies: [],
+                websiteDataRecords: [],
                 javaScriptError: "No WKWebView is attached."
             )
         }
 
         async let nativeCookies = cookies(from: webView.configuration.websiteDataStore.httpCookieStore)
+        async let websiteRecords = websiteDataRecords(from: webView.configuration.websiteDataStore)
         async let javaScriptState = pageState(from: webView)
-        let (cookies, state) = await (nativeCookies, javaScriptState)
+        let (cookies, records, state) = await (nativeCookies, websiteRecords, javaScriptState)
 
         return BrowserStateSnapshot(
             reason: reason,
@@ -156,6 +158,7 @@ public final class BrowserCaptureSession: NSObject {
             localStorage: state.localStorage,
             sessionStorage: state.sessionStorage,
             cookies: cookies,
+            websiteDataRecords: records,
             javaScriptError: state.error
         )
     }
@@ -224,6 +227,27 @@ public final class BrowserCaptureSession: NSObject {
                     isSessionOnly: cookie.isSessionOnly,
                     isSecure: cookie.isSecure,
                     isHTTPOnly: cookie.isHTTPOnly
+                )
+            }
+    }
+
+    private func websiteDataRecords(from dataStore: WKWebsiteDataStore) async -> [BrowserWebsiteDataRecordSnapshot] {
+        let dataTypes = WKWebsiteDataStore.allWebsiteDataTypes()
+        let records = await withCheckedContinuation { continuation in
+            dataStore.fetchDataRecords(ofTypes: dataTypes) { records in
+                continuation.resume(returning: records)
+            }
+        }
+
+        return
+            records
+            .sorted { lhs, rhs in
+                lhs.displayName < rhs.displayName
+            }
+            .map { record in
+                BrowserWebsiteDataRecordSnapshot(
+                    displayName: record.displayName,
+                    dataTypes: Array(record.dataTypes).sorted()
                 )
             }
     }
@@ -481,7 +505,7 @@ public final class BrowserCaptureSession: NSObject {
         return nil
     }
 
-    private func emitPageEvent(kind: BrowserPageEvent.Kind, webView: WKWebView?, message: String? = nil) {
+    func emitPageEvent(kind: BrowserPageEvent.Kind, webView: WKWebView?, message: String? = nil) {
         emit(
             .page(
                 BrowserPageEvent(
@@ -494,13 +518,13 @@ public final class BrowserCaptureSession: NSObject {
         )
     }
 
-    private func emit(_ event: BrowserCaptureEvent) {
+    func emit(_ event: BrowserCaptureEvent) {
         switch event {
         case .page(let event):
             if event.kind == .navigationStarted {
                 pageEpoch += 1
             }
-        case .response:
+        case .response, .nativeNetwork:
             capturedResponseCount += 1
         case .browserState, .accessibility, .console, .scriptError, .action:
             break
@@ -825,25 +849,7 @@ extension BrowserCaptureSession {
     private func networkDelta(since context: BrowserActionExecutionContext) -> Int {
         capturedResponseCount - context.responseCountBefore
     }
-}
 
-extension BrowserCaptureSession: WKNavigationDelegate {
-    public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
-        emitPageEvent(kind: .navigationStarted, webView: webView)
-    }
-
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
-        emitPageEvent(kind: .navigationFinished, webView: webView)
-        captureBrowserState(reason: "navigationFinished")
-    }
-
-    public func webView(_ webView: WKWebView, didFail navigation: WKNavigation?, withError error: Error) {
-        emitPageEvent(kind: .navigationFailed, webView: webView, message: error.localizedDescription)
-    }
-
-    public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation?, withError error: Error) {
-        emitPageEvent(kind: .navigationFailed, webView: webView, message: error.localizedDescription)
-    }
 }
 
 private struct BrowserPageState {

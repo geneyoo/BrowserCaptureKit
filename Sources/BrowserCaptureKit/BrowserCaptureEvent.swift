@@ -3,6 +3,7 @@ import Foundation
 public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
     case page(BrowserPageEvent)
     case response(CapturedResponse)
+    case nativeNetwork(BrowserNativeNetworkEvent)
     case browserState(BrowserStateSnapshot)
     case accessibility(BrowserAccessibilitySnapshot)
     case action(BrowserActionResult)
@@ -15,6 +16,8 @@ public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
             event.id
         case .response(let response):
             response.id
+        case .nativeNetwork(let event):
+            event.id
         case .browserState(let snapshot):
             snapshot.id
         case .accessibility(let snapshot):
@@ -34,6 +37,8 @@ public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
             event.capturedAt
         case .response(let response):
             response.capturedAt
+        case .nativeNetwork(let event):
+            event.capturedAt
         case .browserState(let snapshot):
             snapshot.capturedAt
         case .accessibility(let snapshot):
@@ -59,6 +64,7 @@ public struct BrowserStateSnapshot: Identifiable, Equatable, Sendable {
     public let localStorage: [String: String]
     public let sessionStorage: [String: String]
     public let cookies: [BrowserCookieSnapshot]
+    public let websiteDataRecords: [BrowserWebsiteDataRecordSnapshot]
     public let javaScriptError: String?
 
     public init(
@@ -72,6 +78,7 @@ public struct BrowserStateSnapshot: Identifiable, Equatable, Sendable {
         localStorage: [String: String],
         sessionStorage: [String: String],
         cookies: [BrowserCookieSnapshot],
+        websiteDataRecords: [BrowserWebsiteDataRecordSnapshot] = [],
         javaScriptError: String? = nil
     ) {
         self.id = id
@@ -84,6 +91,7 @@ public struct BrowserStateSnapshot: Identifiable, Equatable, Sendable {
         self.localStorage = localStorage
         self.sessionStorage = sessionStorage
         self.cookies = cookies
+        self.websiteDataRecords = websiteDataRecords
         self.javaScriptError = javaScriptError
     }
 }
@@ -119,6 +127,73 @@ public struct BrowserCookieSnapshot: Identifiable, Equatable, Sendable {
         self.isSessionOnly = isSessionOnly
         self.isSecure = isSecure
         self.isHTTPOnly = isHTTPOnly
+    }
+}
+
+public struct BrowserWebsiteDataRecordSnapshot: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public let displayName: String
+    public let dataTypes: [String]
+
+    public init(
+        id: UUID = UUID(),
+        displayName: String,
+        dataTypes: [String]
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.dataTypes = dataTypes
+    }
+}
+
+public struct BrowserNativeNetworkEvent: Identifiable, Equatable, Sendable {
+    public enum Phase: String, Equatable, Sendable {
+        case navigationAction
+        case navigationResponse
+    }
+
+    public let id: UUID
+    public let capturedAt: Date
+    public let phase: Phase
+    public let url: URL?
+    public let mainDocumentURL: URL?
+    public let method: String?
+    public let status: Int?
+    public let mimeType: String?
+    public let expectedContentLength: Int64?
+    public let headers: [String: String]
+    public let isForMainFrame: Bool?
+    public let navigationType: String?
+    public let canShowMIMEType: Bool?
+
+    public init(
+        id: UUID = UUID(),
+        capturedAt: Date = Date(),
+        phase: Phase,
+        url: URL?,
+        mainDocumentURL: URL? = nil,
+        method: String? = nil,
+        status: Int? = nil,
+        mimeType: String? = nil,
+        expectedContentLength: Int64? = nil,
+        headers: [String: String] = [:],
+        isForMainFrame: Bool? = nil,
+        navigationType: String? = nil,
+        canShowMIMEType: Bool? = nil
+    ) {
+        self.id = id
+        self.capturedAt = capturedAt
+        self.phase = phase
+        self.url = url
+        self.mainDocumentURL = mainDocumentURL
+        self.method = method
+        self.status = status
+        self.mimeType = mimeType
+        self.expectedContentLength = expectedContentLength
+        self.headers = headers
+        self.isForMainFrame = isForMainFrame
+        self.navigationType = navigationType
+        self.canShowMIMEType = canShowMIMEType
     }
 }
 

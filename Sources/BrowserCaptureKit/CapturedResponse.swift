@@ -14,7 +14,10 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
     public let status: Int?
     public let statusText: String?
     public let contentType: String?
+    public let requestHeaders: [String: String]
+    public let requestMetadata: [String: String]
     public let requestBodyPreview: String?
+    public let responseHeaders: [String: String]
     public let responseBodyPreview: String?
     public let responseBodyTruncated: Bool
     public let durationMilliseconds: Double?
@@ -29,7 +32,10 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
         status: Int? = nil,
         statusText: String? = nil,
         contentType: String? = nil,
+        requestHeaders: [String: String] = [:],
+        requestMetadata: [String: String] = [:],
         requestBodyPreview: String? = nil,
+        responseHeaders: [String: String] = [:],
         responseBodyPreview: String? = nil,
         responseBodyTruncated: Bool = false,
         durationMilliseconds: Double? = nil,
@@ -43,7 +49,10 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
         self.status = status
         self.statusText = statusText
         self.contentType = contentType
+        self.requestHeaders = requestHeaders
+        self.requestMetadata = requestMetadata
         self.requestBodyPreview = requestBodyPreview
+        self.responseHeaders = responseHeaders
         self.responseBodyPreview = responseBodyPreview
         self.responseBodyTruncated = responseBodyTruncated
         self.durationMilliseconds = durationMilliseconds
