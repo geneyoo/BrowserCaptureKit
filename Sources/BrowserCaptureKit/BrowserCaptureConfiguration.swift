@@ -19,6 +19,10 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
     public var storageMode: StorageMode
     public var capturesFetch: Bool
     public var capturesXHR: Bool
+    /// Hook `WebSocket`, `EventSource`, and `navigator.sendBeacon`. Streamed
+    /// chat widgets (LivePerson/Zendesk/Amazon Connect) deliver the live
+    /// conversation over a WebSocket, so this is required to read the transcript.
+    public var capturesWebSocket: Bool
     public var capturesConsole: Bool
     public var maxBodyPreviewCharacters: Int
 
@@ -27,6 +31,7 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
         storageMode: StorageMode = .persistent(identifier: BrowserCaptureConfiguration.defaultPersistentStoreIdentifier),
         capturesFetch: Bool = true,
         capturesXHR: Bool = true,
+        capturesWebSocket: Bool = true,
         capturesConsole: Bool = false,
         maxBodyPreviewCharacters: Int = 24_000
     ) {
@@ -34,6 +39,7 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
         self.storageMode = storageMode
         self.capturesFetch = capturesFetch
         self.capturesXHR = capturesXHR
+        self.capturesWebSocket = capturesWebSocket
         self.capturesConsole = capturesConsole
         self.maxBodyPreviewCharacters = max(0, maxBodyPreviewCharacters)
     }

@@ -1,14 +1,48 @@
 import Foundation
 
+/// Frame attribution for a captured event, derived from `WKScriptMessage.frameInfo`.
+///
+/// This lets a consumer tell traffic that originated in a cross-origin child
+/// iframe (e.g. an embedded customer-service chat widget) apart from
+/// main-page/analytics traffic.
+public struct CapturedFrameInfo: Equatable, Sendable {
+    public let isMainFrame: Bool
+    /// `WKSecurityOrigin` rendered as `scheme://host[:port]`.
+    public let securityOrigin: String?
+    /// `WKFrameInfo.request.url` when available.
+    public let requestURL: String?
+
+    public init(isMainFrame: Bool, securityOrigin: String? = nil, requestURL: String? = nil) {
+        self.isMainFrame = isMainFrame
+        self.securityOrigin = securityOrigin
+        self.requestURL = requestURL
+    }
+}
+
 public struct CapturedResponse: Identifiable, Equatable, Sendable {
     public enum Source: String, Equatable, Sendable {
         case fetch
         case xhr
+        case websocket
+        case eventsource
+        case beacon
+    }
+
+    /// Direction of a streamed frame for socket-style sources. `nil` for
+    /// request/response sources (fetch/xhr/beacon).
+    public enum Direction: String, Equatable, Sendable {
+        case outbound
+        case inbound
+        case open
+        case close
+        case error
     }
 
     public let id: UUID
     public let capturedAt: Date
     public let source: Source
+    public let direction: Direction?
+    public let frame: CapturedFrameInfo?
     public let method: String
     public let url: URL
     public let status: Int?
@@ -27,6 +61,8 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
         id: UUID = UUID(),
         capturedAt: Date = Date(),
         source: Source,
+        direction: Direction? = nil,
+        frame: CapturedFrameInfo? = nil,
         method: String,
         url: URL,
         status: Int? = nil,
@@ -44,6 +80,8 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
         self.id = id
         self.capturedAt = capturedAt
         self.source = source
+        self.direction = direction
+        self.frame = frame
         self.method = method
         self.url = url
         self.status = status

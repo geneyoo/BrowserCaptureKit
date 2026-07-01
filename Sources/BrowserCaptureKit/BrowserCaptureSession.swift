@@ -1,6 +1,10 @@
 import Foundation
 import WebKit
 
+public enum BrowserCaptureError: Error, Sendable {
+    case noWebView
+}
+
 @MainActor
 public final class BrowserCaptureSession: NSObject {
     public let configuration: BrowserCaptureConfiguration
@@ -65,6 +69,31 @@ public final class BrowserCaptureSession: NSObject {
 
     public func loadInitialURL() {
         load(configuration.initialURL)
+    }
+
+    /// The most recently observed non-main frame (e.g. a cross-origin chat-widget
+    /// iframe), captured from `WKScriptMessage.frameInfo`. Because our capture
+    /// script is injected with `forMainFrameOnly: false`, this is populated as
+    /// soon as the child frame emits any traffic. Use it as the target for
+    /// ``evaluateJavaScript(_:inChildFrame:)`` to drive the widget's DOM.
+    public var latestChildFrame: WKFrameInfo? {
+        bridge.lastChildFrame
+    }
+
+    /// Evaluate JavaScript in a specific frame (defaults to the latest child
+    /// frame). This is how native code reaches into a cross-origin child iframe:
+    /// the injected in-frame script is same-origin with the child document, so
+    /// evaluating there can read/drive the widget's DOM directly.
+    @discardableResult
+    public func evaluateJavaScript(
+        _ javaScript: String,
+        inChildFrame frame: WKFrameInfo? = nil
+    ) async throws -> Any? {
+        guard let webView else {
+            throw BrowserCaptureError.noWebView
+        }
+        let targetFrame = frame ?? bridge.lastChildFrame
+        return try await webView.evaluateJavaScript(javaScript, in: targetFrame, contentWorld: .page)
     }
 
     public func load(_ url: URL) {

@@ -6,17 +6,30 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
     var onEvent: ((BrowserCaptureEvent) -> Void)?
     var onViewportChanged: ((String?) -> Void)?
 
+    /// The most recently seen non-main frame (e.g. a cross-origin chat-widget
+    /// iframe). Retained so native code can target `evaluateJavaScript(_:in:_:)`
+    /// at the child frame that originated the traffic.
+    private(set) var lastChildFrame: WKFrameInfo?
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else {
             onEvent?(.scriptError(BrowserScriptError(message: "Received non-object script message.")))
             return
         }
 
+        let wkFrame = message.frameInfo
+        if !wkFrame.isMainFrame {
+            lastChildFrame = wkFrame
+        }
+        let frame = capturedFrame(from: wkFrame)
+
         let capturedAt = date(from: body["capturedAtEpochMS"])
 
         switch body["kind"] as? String {
         case "response":
-            handleResponse(body: body, capturedAt: capturedAt)
+            handleResponse(body: body, frame: frame, capturedAt: capturedAt)
+        case "socket":
+            handleSocket(body: body, frame: frame, capturedAt: capturedAt)
         case "console":
             handleConsole(body: body, capturedAt: capturedAt)
         case "scriptError":
@@ -28,7 +41,25 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
         }
     }
 
-    private func handleResponse(body: [String: Any], capturedAt: Date) {
+    private func capturedFrame(from frameInfo: WKFrameInfo) -> CapturedFrameInfo {
+        let origin = frameInfo.securityOrigin
+        let originString: String?
+        if origin.protocol.isEmpty && origin.host.isEmpty {
+            originString = nil
+        } else if origin.port == 0 {
+            originString = "\(origin.protocol)://\(origin.host)"
+        } else {
+            originString = "\(origin.protocol)://\(origin.host):\(origin.port)"
+        }
+
+        return CapturedFrameInfo(
+            isMainFrame: frameInfo.isMainFrame,
+            securityOrigin: originString,
+            requestURL: frameInfo.request.url?.absoluteString
+        )
+    }
+
+    private func handleResponse(body: [String: Any], frame: CapturedFrameInfo, capturedAt: Date) {
         guard
             let rawSource = body["source"] as? String,
             let source = CapturedResponse.Source(rawValue: rawSource),
@@ -42,6 +73,7 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
         let response = CapturedResponse(
             capturedAt: capturedAt,
             source: source,
+            frame: frame,
             method: string(body["method"]) ?? "GET",
             url: url,
             status: int(body["status"]),
@@ -55,6 +87,38 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
             responseBodyTruncated: bool(body["responseBodyTruncated"]) ?? false,
             durationMilliseconds: double(body["durationMilliseconds"]),
             errorDescription: string(body["errorDescription"])
+        )
+        onEvent?(.response(response))
+    }
+
+    private func handleSocket(body: [String: Any], frame: CapturedFrameInfo, capturedAt: Date) {
+        guard
+            let rawSource = body["source"] as? String,
+            let source = CapturedResponse.Source(rawValue: rawSource),
+            let rawURL = body["url"] as? String,
+            let url = URL(string: rawURL)
+        else {
+            onEvent?(.scriptError(BrowserScriptError(capturedAt: capturedAt, message: "Received malformed socket event.")))
+            return
+        }
+
+        let direction = string(body["direction"]).flatMap(CapturedResponse.Direction.init(rawValue:))
+        // A socket frame is one-directional: outbound payloads go in the request
+        // slot, inbound payloads in the response slot, so consumers can reuse the
+        // existing request/response rendering.
+        let bodyPreview = string(body["bodyPreview"])
+        let isInbound = direction == .inbound
+        let response = CapturedResponse(
+            capturedAt: capturedAt,
+            source: source,
+            direction: direction,
+            frame: frame,
+            method: source == .beacon ? "BEACON" : "WS",
+            url: url,
+            requestMetadata: stringDictionary(body["metadata"]),
+            requestBodyPreview: isInbound ? nil : bodyPreview,
+            responseBodyPreview: isInbound ? bodyPreview : nil,
+            errorDescription: direction == .error ? "socket error" : nil
         )
         onEvent?(.response(response))
     }

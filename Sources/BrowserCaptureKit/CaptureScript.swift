@@ -7,6 +7,7 @@ enum CaptureScript {
             "messageHandlerName": messageHandlerName,
             "capturesFetch": configuration.capturesFetch,
             "capturesXHR": configuration.capturesXHR,
+            "capturesWebSocket": configuration.capturesWebSocket,
             "capturesConsole": configuration.capturesConsole,
             "maxBodyPreviewCharacters": configuration.maxBodyPreviewCharacters,
         ]
@@ -471,6 +472,179 @@ enum CaptureScript {
                     });
                   }
 
+                  function socketPreview(value) {
+                    try {
+                      if (value == null) {
+                        return null;
+                      }
+                      if (typeof value === "string") {
+                        return value.length > maxChars ? value.slice(0, maxChars) : value;
+                      }
+                      if (typeof Blob !== "undefined" && value instanceof Blob) {
+                        return `[Blob type=${value.type || "unknown"} size=${value.size}]`;
+                      }
+                      if (value instanceof ArrayBuffer) {
+                        return `[ArrayBuffer byteLength=${value.byteLength}]`;
+                      }
+                      if (ArrayBuffer.isView(value)) {
+                        return `[TypedArray byteLength=${value.byteLength}]`;
+                      }
+                      const text = String(value);
+                      return text.length > maxChars ? text.slice(0, maxChars) : text;
+                    } catch (_) {
+                      return "[unavailable]";
+                    }
+                  }
+
+                  function installWebSocketCapture() {
+                    if (!options.capturesWebSocket || typeof window.WebSocket !== "function") {
+                      return;
+                    }
+
+                    const OriginalWebSocket = window.WebSocket;
+
+                    function CapturingWebSocket(url, protocols) {
+                      const socket = protocols === undefined
+                        ? new OriginalWebSocket(url)
+                        : new OriginalWebSocket(url, protocols);
+                      const resolvedURL = coerceURL(url);
+
+                      post({
+                        kind: "socket",
+                        source: "websocket",
+                        direction: "open",
+                        url: resolvedURL,
+                        metadata: {
+                          protocols: protocols == null ? null : String(protocols)
+                        }
+                      });
+
+                      socket.addEventListener("message", (event) => {
+                        post({
+                          kind: "socket",
+                          source: "websocket",
+                          direction: "inbound",
+                          url: resolvedURL,
+                          bodyPreview: socketPreview(event && event.data)
+                        });
+                      });
+
+                      socket.addEventListener("close", (event) => {
+                        post({
+                          kind: "socket",
+                          source: "websocket",
+                          direction: "close",
+                          url: resolvedURL,
+                          metadata: {
+                            code: event && event.code != null ? String(event.code) : null,
+                            reason: event && event.reason ? String(event.reason) : null,
+                            wasClean: event ? String(Boolean(event.wasClean)) : null
+                          }
+                        });
+                      });
+
+                      socket.addEventListener("error", () => {
+                        post({
+                          kind: "socket",
+                          source: "websocket",
+                          direction: "error",
+                          url: resolvedURL
+                        });
+                      });
+
+                      const originalSend = socket.send;
+                      socket.send = function browserCaptureSocketSend(data) {
+                        post({
+                          kind: "socket",
+                          source: "websocket",
+                          direction: "outbound",
+                          url: resolvedURL,
+                          bodyPreview: socketPreview(data)
+                        });
+                        return originalSend.apply(this, arguments);
+                      };
+
+                      return socket;
+                    }
+
+                    CapturingWebSocket.prototype = OriginalWebSocket.prototype;
+                    ["CONNECTING", "OPEN", "CLOSING", "CLOSED"].forEach((key) => {
+                      try {
+                        CapturingWebSocket[key] = OriginalWebSocket[key];
+                      } catch (_) {}
+                    });
+
+                    try {
+                      window.WebSocket = CapturingWebSocket;
+                    } catch (_) {}
+                  }
+
+                  function installEventSourceCapture() {
+                    if (!options.capturesWebSocket || typeof window.EventSource !== "function") {
+                      return;
+                    }
+
+                    const OriginalEventSource = window.EventSource;
+
+                    function CapturingEventSource(url, config) {
+                      const source = config === undefined
+                        ? new OriginalEventSource(url)
+                        : new OriginalEventSource(url, config);
+                      const resolvedURL = coerceURL(url);
+
+                      post({
+                        kind: "socket",
+                        source: "eventsource",
+                        direction: "open",
+                        url: resolvedURL,
+                        metadata: {
+                          withCredentials: config && config.withCredentials ? "true" : "false"
+                        }
+                      });
+
+                      source.addEventListener("message", (event) => {
+                        post({
+                          kind: "socket",
+                          source: "eventsource",
+                          direction: "inbound",
+                          url: resolvedURL,
+                          bodyPreview: socketPreview(event && event.data)
+                        });
+                      });
+
+                      return source;
+                    }
+
+                    CapturingEventSource.prototype = OriginalEventSource.prototype;
+                    ["CONNECTING", "OPEN", "CLOSED"].forEach((key) => {
+                      try {
+                        CapturingEventSource[key] = OriginalEventSource[key];
+                      } catch (_) {}
+                    });
+
+                    try {
+                      window.EventSource = CapturingEventSource;
+                    } catch (_) {}
+                  }
+
+                  function installBeaconCapture() {
+                    if (!options.capturesWebSocket || !window.navigator || typeof window.navigator.sendBeacon !== "function") {
+                      return;
+                    }
+
+                    const originalSendBeacon = window.navigator.sendBeacon.bind(window.navigator);
+                    window.navigator.sendBeacon = function browserCaptureSendBeacon(url, data) {
+                      post({
+                        kind: "socket",
+                        source: "beacon",
+                        direction: "outbound",
+                        url: coerceURL(url),
+                        bodyPreview: socketPreview(data)
+                      });
+                      return originalSendBeacon(url, data);
+                    };
+                  }
+
                   function installViewportCapture() {
                     if (window !== window.top || typeof window.addEventListener !== "function") {
                       return;
@@ -503,6 +677,9 @@ enum CaptureScript {
                   try {
                     installFetchCapture();
                     installXHRCapture();
+                    installWebSocketCapture();
+                    installEventSourceCapture();
+                    installBeaconCapture();
                     installConsoleCapture();
                     installViewportCapture();
                     post({ kind: "console", level: "debug", message: "BrowserCaptureKit installed" });
