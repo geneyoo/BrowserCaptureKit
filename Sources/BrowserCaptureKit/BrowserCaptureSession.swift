@@ -7,7 +7,9 @@ public final class BrowserCaptureSession: NSObject {
 
     public var onEvent: ((BrowserCaptureEvent) -> Void)? {
         didSet {
-            bridge.onEvent = onEvent
+            bridge.onEvent = { [weak self] event in
+                self?.emit(event)
+            }
         }
     }
 
@@ -21,12 +23,14 @@ public final class BrowserCaptureSession: NSObject {
 
     private let messageHandlerName = "browserCapture"
     private let bridge = ScriptMessageBridge()
+    private var pageEpoch = 0
+    private var capturedResponseCount = 0
 
     public init(configuration: BrowserCaptureConfiguration = BrowserCaptureConfiguration()) {
         self.configuration = configuration
         super.init()
         bridge.onEvent = { [weak self] event in
-            self?.onEvent?(event)
+            self?.emit(event)
         }
     }
 
@@ -107,89 +111,6 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
-    @discardableResult
-    public func clickElement(label: String, role: String? = nil) async -> BrowserActionResult {
-        guard let webView else {
-            return BrowserActionResult(
-                kind: .click,
-                succeeded: false,
-                message: "No WKWebView is attached.",
-                label: label,
-                role: role
-            )
-        }
-
-        do {
-            let result = try await webView.evaluateJavaScript(
-                BrowserActionScript.clickElementSource(label: label, role: role)
-            )
-            guard let payload = result as? [String: Any] else {
-                return BrowserActionResult(
-                    kind: .click,
-                    succeeded: false,
-                    message: "Click script returned a non-object result.",
-                    label: label,
-                    role: role
-                )
-            }
-
-            let actionResult = BrowserActionResult(
-                kind: .click,
-                succeeded: bool(payload["succeeded"]) ?? false,
-                message: string(payload["message"]) ?? "Click action finished.",
-                matchedElementCount: int(payload["matchedElementCount"]) ?? 0,
-                label: string(payload["label"]) ?? label,
-                role: string(payload["role"]) ?? role,
-                path: string(payload["path"])
-            )
-            captureAccessibilitySnapshot(reason: "action:click")
-            return actionResult
-        } catch {
-            return BrowserActionResult(
-                kind: .click,
-                succeeded: false,
-                message: error.localizedDescription,
-                label: label,
-                role: role
-            )
-        }
-    }
-
-    @discardableResult
-    public func scrollBy(deltaX: Double = 0, deltaY: Double) -> BrowserActionResult {
-        guard let scrollView = webView?.scrollView else {
-            return BrowserActionResult(
-                kind: .scroll,
-                succeeded: false,
-                message: "No WKWebView is attached."
-            )
-        }
-
-        let inset = scrollView.adjustedContentInset
-        let minimumX = -inset.left
-        let minimumY = -inset.top
-        let maximumX = max(
-            minimumX,
-            scrollView.contentSize.width - scrollView.bounds.width + inset.right
-        )
-        let maximumY = max(
-            minimumY,
-            scrollView.contentSize.height - scrollView.bounds.height + inset.bottom
-        )
-        let target = CGPoint(
-            x: min(max(scrollView.contentOffset.x + deltaX, minimumX), maximumX),
-            y: min(max(scrollView.contentOffset.y + deltaY, minimumY), maximumY)
-        )
-
-        scrollView.setContentOffset(target, animated: true)
-        captureAccessibilitySnapshot(reason: "action:scroll")
-        return BrowserActionResult(
-            kind: .scroll,
-            succeeded: true,
-            message: "Scrolled to x=\(Int(target.x)) y=\(Int(target.y))."
-        )
-    }
-
     private func websiteDataStore() -> WKWebsiteDataStore {
         switch configuration.storageMode {
         case .nonPersistent:
@@ -235,6 +156,7 @@ public final class BrowserCaptureSession: NSObject {
         guard let webView else {
             return BrowserAccessibilitySnapshot(
                 reason: reason,
+                pageEpoch: pageEpoch,
                 url: nil,
                 title: nil,
                 viewportWidth: nil,
@@ -251,8 +173,13 @@ public final class BrowserCaptureSession: NSObject {
         let state = await accessibilityState(from: webView)
         return BrowserAccessibilitySnapshot(
             reason: reason,
+            pageEpoch: pageEpoch,
             url: webView.url,
             title: webView.title,
+            scrollX: state.scrollX,
+            scrollY: state.scrollY,
+            viewportOffsetX: state.viewportOffsetX,
+            viewportOffsetY: state.viewportOffsetY,
             viewportWidth: state.viewportWidth,
             viewportHeight: state.viewportHeight,
             elementCount: state.elementCount,
@@ -377,6 +304,10 @@ public final class BrowserCaptureSession: NSObject {
                 .compactMap(accessibilityElement(from:))
 
             return BrowserAccessibilityPageState(
+                scrollX: double(payload["scrollX"]),
+                scrollY: double(payload["scrollY"]),
+                viewportOffsetX: double(payload["viewportOffsetX"]),
+                viewportOffsetY: double(payload["viewportOffsetY"]),
                 viewportWidth: double(payload["viewportWidth"]),
                 viewportHeight: double(payload["viewportHeight"]),
                 elementCount: int(payload["elementCount"]) ?? elements.count,
@@ -409,6 +340,7 @@ public final class BrowserCaptureSession: NSObject {
         )
 
         return BrowserAccessibilityElementSnapshot(
+            stableID: string(payload["stableID"]),
             index: index,
             tagName: tagName,
             role: string(payload["role"]),
@@ -423,9 +355,49 @@ public final class BrowserCaptureSession: NSObject {
             isVisible: bool(payload["isVisible"]) ?? false,
             isInteractive: bool(payload["isInteractive"]) ?? false,
             isDisabled: bool(payload["isDisabled"]) ?? false,
+            isEditable: bool(payload["isEditable"]) ?? false,
+            isObscuredAtCenter: bool(payload["isObscuredAtCenter"]) ?? false,
             ariaHidden: bool(payload["ariaHidden"]) ?? false,
             bounds: bounds,
-            path: string(payload["path"]) ?? ""
+            path: string(payload["path"]) ?? "",
+            selectorFingerprint: string(payload["selectorFingerprint"]),
+            supportedActions: (payload["supportedActions"] as? [String] ?? [])
+                .compactMap(BrowserActionKind.init(rawValue:))
+        )
+    }
+
+    private func resolvedElement(from value: Any?) -> BrowserResolvedElement? {
+        guard let payload = value as? [String: Any] else {
+            return nil
+        }
+
+        let bounds: BrowserElementBounds?
+        if let boundsPayload = payload["bounds"] as? [String: Any] {
+            bounds = BrowserElementBounds(
+                x: double(boundsPayload["x"]) ?? 0,
+                y: double(boundsPayload["y"]) ?? 0,
+                width: double(boundsPayload["width"]) ?? 0,
+                height: double(boundsPayload["height"]) ?? 0
+            )
+        } else {
+            bounds = nil
+        }
+
+        return BrowserResolvedElement(
+            score: double(payload["score"]) ?? 0,
+            index: int(payload["index"]),
+            tagName: string(payload["tagName"]),
+            role: string(payload["role"]),
+            label: string(payload["label"]),
+            text: string(payload["text"]),
+            path: string(payload["path"]),
+            selectorFingerprint: string(payload["selectorFingerprint"]),
+            bounds: bounds,
+            isVisible: bool(payload["isVisible"]) ?? false,
+            isInteractive: bool(payload["isInteractive"]) ?? false,
+            isDisabled: bool(payload["isDisabled"]) ?? false,
+            isEditable: bool(payload["isEditable"]) ?? false,
+            isObscuredAtCenter: bool(payload["isObscuredAtCenter"]) ?? false
         )
     }
 
@@ -502,7 +474,7 @@ public final class BrowserCaptureSession: NSObject {
     }
 
     private func emitPageEvent(kind: BrowserPageEvent.Kind, webView: WKWebView?, message: String? = nil) {
-        onEvent?(
+        emit(
             .page(
                 BrowserPageEvent(
                     kind: kind,
@@ -512,6 +484,338 @@ public final class BrowserCaptureSession: NSObject {
                 )
             )
         )
+    }
+
+    private func emit(_ event: BrowserCaptureEvent) {
+        switch event {
+        case .page(let event):
+            if event.kind == .navigationStarted {
+                pageEpoch += 1
+            }
+        case .response:
+            capturedResponseCount += 1
+        case .browserState, .accessibility, .console, .scriptError, .action:
+            break
+        }
+        onEvent?(event)
+    }
+}
+
+extension BrowserCaptureSession {
+    @discardableResult
+    public func perform(_ action: BrowserActionRequest) async -> BrowserActionResult {
+        let context = BrowserActionExecutionContext(
+            requestID: UUID(),
+            responseCountBefore: capturedResponseCount,
+            urlBefore: webView?.url
+        )
+        let result = await perform(action, context: context)
+        emit(.action(result))
+        return result
+    }
+
+    @discardableResult
+    public func clickElement(label: String, role: String? = nil) async -> BrowserActionResult {
+        await perform(.tap(target: .label(label, role: role)))
+    }
+
+    @discardableResult
+    public func scrollBy(deltaX: Double = 0, deltaY: Double) -> BrowserActionResult {
+        let context = BrowserActionExecutionContext(
+            requestID: UUID(),
+            responseCountBefore: capturedResponseCount,
+            urlBefore: webView?.url
+        )
+        let result = makeScrollResult(context: context, deltaX: deltaX, deltaY: deltaY)
+        emit(.action(result))
+        captureAccessibilitySnapshot(reason: "action:scroll")
+        return result
+    }
+
+    private func perform(
+        _ action: BrowserActionRequest,
+        context: BrowserActionExecutionContext
+    ) async -> BrowserActionResult {
+        switch action {
+        case .observe(let reason):
+            return await performObserve(reason: reason, context: context)
+        case .tap(let target):
+            return await performScriptedAction(context: context, kind: .tap, source: BrowserActionScript.tapSource(target: target))
+        case .fill(let target, let text, let submit):
+            return await performScriptedAction(
+                context: context,
+                kind: .fill,
+                source: BrowserActionScript.fillSource(target: target, text: text, submit: submit),
+                redactionWarnings: ["Filled text is redacted from action traces."]
+            )
+        case .clear(let target):
+            return await performScriptedAction(context: context, kind: .clear, source: BrowserActionScript.clearSource(target: target))
+        case .pressEnter(let target):
+            return await performScriptedAction(
+                context: context,
+                kind: .pressEnter,
+                source: BrowserActionScript.pressEnterSource(target: target)
+            )
+        case .scroll(let deltaX, let deltaY):
+            return await performScroll(context: context, deltaX: deltaX, deltaY: deltaY)
+        case .swipe(let target, let direction):
+            return await performSwipe(context: context, target: target, direction: direction)
+        case .openURL(let url):
+            load(url)
+            return navigationResult(context: context, kind: .openURL, message: "Opened \(url.absoluteString).")
+        case .back:
+            goBack()
+            return navigationResult(context: context, kind: .back, message: "Requested browser back navigation.")
+        case .forward:
+            goForward()
+            return navigationResult(context: context, kind: .forward, message: "Requested browser forward navigation.")
+        case .reload:
+            reload()
+            return navigationResult(context: context, kind: .reload, message: "Requested browser reload.")
+        case .waitFor(let condition):
+            return await performImmediateWait(context: context, condition: condition)
+        }
+    }
+
+    private func performObserve(reason: String, context: BrowserActionExecutionContext) async -> BrowserActionResult {
+        let snapshot = await makeAccessibilitySnapshot(reason: reason)
+        emit(.accessibility(snapshot))
+        return BrowserActionResult(
+            requestID: context.requestID,
+            kind: .observe,
+            status: .succeeded,
+            message: "Captured \(snapshot.elements.count) action candidates.",
+            matchedElementCount: snapshot.elements.count,
+            afterSnapshotID: snapshot.id,
+            urlBefore: context.urlBefore,
+            urlAfter: webView?.url,
+            networkEventCountDelta: networkDelta(since: context)
+        )
+    }
+
+    private func navigationResult(
+        context: BrowserActionExecutionContext,
+        kind: BrowserActionKind,
+        message: String
+    ) -> BrowserActionResult {
+        BrowserActionResult(
+            requestID: context.requestID,
+            kind: kind,
+            status: .succeeded,
+            message: message,
+            urlBefore: context.urlBefore,
+            urlAfter: webView?.url,
+            networkEventCountDelta: networkDelta(since: context)
+        )
+    }
+
+    private func performScriptedAction(
+        context: BrowserActionExecutionContext,
+        kind: BrowserActionKind,
+        source: String,
+        redactionWarnings: [String] = []
+    ) async -> BrowserActionResult {
+        guard let webView else {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: kind,
+                status: .noWebView,
+                message: "No WKWebView is attached.",
+                urlBefore: context.urlBefore,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+
+        do {
+            let result = try await webView.evaluateJavaScript(source)
+            guard let payload = result as? [String: Any] else {
+                return BrowserActionResult(
+                    requestID: context.requestID,
+                    kind: kind,
+                    status: .scriptError,
+                    message: "Action script returned a non-object result.",
+                    urlBefore: context.urlBefore,
+                    urlAfter: webView.url,
+                    networkEventCountDelta: networkDelta(since: context)
+                )
+            }
+
+            return await scriptedActionResult(
+                payload: payload,
+                context: context,
+                kind: kind,
+                webViewURL: webView.url,
+                redactionWarnings: redactionWarnings
+            )
+        } catch {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: kind,
+                status: .scriptError,
+                message: error.localizedDescription,
+                urlBefore: context.urlBefore,
+                urlAfter: webView.url,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+    }
+
+    private func scriptedActionResult(
+        payload: [String: Any],
+        context: BrowserActionExecutionContext,
+        kind: BrowserActionKind,
+        webViewURL: URL?,
+        redactionWarnings: [String]
+    ) async -> BrowserActionResult {
+        let afterSnapshot = await makeAccessibilitySnapshot(reason: "action:\(kind.rawValue)")
+        emit(.accessibility(afterSnapshot))
+        let statusText = string(payload["status"]) ?? "scriptError"
+        let status = BrowserActionStatus(rawValue: statusText) ?? .scriptError
+        let selectedElement = resolvedElement(from: payload["selectedElement"])
+        let candidates = (payload["candidates"] as? [[String: Any]] ?? [])
+            .compactMap { resolvedElement(from: $0) }
+
+        return BrowserActionResult(
+            requestID: context.requestID,
+            kind: kind,
+            status: status,
+            message: string(payload["message"]) ?? "Action finished.",
+            matchedElementCount: int(payload["matchedElementCount"]) ?? candidates.count,
+            selectedElement: selectedElement,
+            candidateSummaries: candidates,
+            afterSnapshotID: afterSnapshot.id,
+            urlBefore: context.urlBefore,
+            urlAfter: webViewURL,
+            networkEventCountDelta: networkDelta(since: context),
+            warnings: redactionWarnings + (payload["warnings"] as? [String] ?? []),
+            label: selectedElement?.label,
+            role: selectedElement?.role,
+            path: selectedElement?.path
+        )
+    }
+
+    private func performScroll(
+        context: BrowserActionExecutionContext,
+        deltaX: Double,
+        deltaY: Double
+    ) async -> BrowserActionResult {
+        let result = makeScrollResult(context: context, deltaX: deltaX, deltaY: deltaY)
+        guard result.succeeded else {
+            return result
+        }
+
+        let snapshot = await makeAccessibilitySnapshot(reason: "action:scroll")
+        emit(.accessibility(snapshot))
+        return result.withAfterSnapshotID(snapshot.id)
+    }
+
+    private func performSwipe(
+        context: BrowserActionExecutionContext,
+        target: BrowserElementTarget?,
+        direction: BrowserSwipeDirection
+    ) async -> BrowserActionResult {
+        guard target == nil else {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .swipe,
+                status: .unsupported,
+                message: "Targeted swipe is not implemented yet; use page-level swipe.",
+                urlBefore: context.urlBefore,
+                urlAfter: webView?.url,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+
+        let distance = max(160, (webView?.bounds.height ?? 600) * 0.72)
+        let width = max(160, (webView?.bounds.width ?? 400) * 0.72)
+        switch direction {
+        case .up:
+            return await performScroll(context: context, deltaX: 0, deltaY: distance)
+        case .down:
+            return await performScroll(context: context, deltaX: 0, deltaY: -distance)
+        case .left:
+            return await performScroll(context: context, deltaX: width, deltaY: 0)
+        case .right:
+            return await performScroll(context: context, deltaX: -width, deltaY: 0)
+        }
+    }
+
+    private func performImmediateWait(
+        context: BrowserActionExecutionContext,
+        condition: BrowserWaitCondition
+    ) async -> BrowserActionResult {
+        switch condition {
+        case .urlContains(let text):
+            let currentURL = webView?.url?.absoluteString ?? ""
+            let succeeded = currentURL.localizedCaseInsensitiveContains(text)
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .waitFor,
+                status: succeeded ? .succeeded : .timedOut,
+                message: succeeded ? "URL matched '\(text)'." : "URL did not match '\(text)'.",
+                urlBefore: context.urlBefore,
+                urlAfter: webView?.url,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        case .element(let target):
+            return await performScriptedAction(
+                context: context,
+                kind: .waitFor,
+                source: BrowserActionScript.waitForElementSource(target: target)
+            )
+        case .quiet:
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .waitFor,
+                status: .unsupported,
+                message: "Quiet wait needs mutation/network-backed waiting and is not implemented yet.",
+                urlBefore: context.urlBefore,
+                urlAfter: webView?.url,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+    }
+
+    private func makeScrollResult(
+        context: BrowserActionExecutionContext,
+        deltaX: Double,
+        deltaY: Double
+    ) -> BrowserActionResult {
+        guard let scrollView = webView?.scrollView else {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .scroll,
+                status: .noWebView,
+                message: "No WKWebView is attached.",
+                urlBefore: context.urlBefore,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+
+        let inset = scrollView.adjustedContentInset
+        let minimumX = -inset.left
+        let minimumY = -inset.top
+        let maximumX = max(minimumX, scrollView.contentSize.width - scrollView.bounds.width + inset.right)
+        let maximumY = max(minimumY, scrollView.contentSize.height - scrollView.bounds.height + inset.bottom)
+        let target = CGPoint(
+            x: min(max(scrollView.contentOffset.x + deltaX, minimumX), maximumX),
+            y: min(max(scrollView.contentOffset.y + deltaY, minimumY), maximumY)
+        )
+
+        scrollView.setContentOffset(target, animated: true)
+        return BrowserActionResult(
+            requestID: context.requestID,
+            kind: .scroll,
+            status: .succeeded,
+            message: "Scrolled to x=\(Int(target.x)) y=\(Int(target.y)).",
+            urlBefore: context.urlBefore,
+            urlAfter: webView?.url,
+            networkEventCountDelta: networkDelta(since: context)
+        )
+    }
+
+    private func networkDelta(since context: BrowserActionExecutionContext) -> Int {
+        capturedResponseCount - context.responseCountBefore
     }
 }
 
@@ -543,6 +847,10 @@ private struct BrowserPageState {
 }
 
 private struct BrowserAccessibilityPageState {
+    var scrollX: Double?
+    var scrollY: Double?
+    var viewportOffsetX: Double?
+    var viewportOffsetY: Double?
     var viewportWidth: Double?
     var viewportHeight: Double?
     var elementCount: Int = 0
@@ -551,4 +859,36 @@ private struct BrowserAccessibilityPageState {
     var elementsOmitted: Int = 0
     var elements: [BrowserAccessibilityElementSnapshot] = []
     var error: String?
+}
+
+private struct BrowserActionExecutionContext {
+    let requestID: UUID
+    let responseCountBefore: Int
+    let urlBefore: URL?
+}
+
+private extension BrowserActionResult {
+    func withAfterSnapshotID(_ afterSnapshotID: UUID) -> BrowserActionResult {
+        BrowserActionResult(
+            id: id,
+            capturedAt: capturedAt,
+            requestID: requestID,
+            schemaVersion: schemaVersion,
+            kind: kind,
+            status: status,
+            message: message,
+            matchedElementCount: matchedElementCount,
+            selectedElement: selectedElement,
+            candidateSummaries: candidateSummaries,
+            beforeSnapshotID: beforeSnapshotID,
+            afterSnapshotID: afterSnapshotID,
+            urlBefore: urlBefore,
+            urlAfter: urlAfter,
+            networkEventCountDelta: networkEventCountDelta,
+            warnings: warnings,
+            label: label,
+            role: role,
+            path: path
+        )
+    }
 }

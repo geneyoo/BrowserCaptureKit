@@ -94,6 +94,15 @@ enum BrowserAccessibilityScript {
             return Boolean(element.disabled || element.getAttribute("aria-disabled") === "true");
           }
 
+          function isEditable(element, role) {
+            const tag = element.tagName.toLowerCase();
+            const type = String(element.getAttribute("type") || "").toLowerCase();
+            if (element.isContentEditable || element.getAttribute("contenteditable") === "true") return true;
+            if (tag === "textarea") return true;
+            if (tag === "input" && !["button", "checkbox", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(type)) return true;
+            return role === "textbox" && !isDisabled(element);
+          }
+
           function currentViewport() {
             if (window.visualViewport) {
               return {
@@ -216,6 +225,47 @@ enum BrowserAccessibilityScript {
             return "body" + (parts.length ? " > " + parts.join(" > ") : "");
           }
 
+          function selectorFingerprintFor(element, role, label, path, rect) {
+            return [
+              element.tagName.toLowerCase(),
+              role || "",
+              compact(label || "").toLocaleLowerCase(),
+              nullable(element.getAttribute("href")) || nullable(element.href) || "",
+              path || "",
+              Math.round(rect.width || 0) + "x" + Math.round(rect.height || 0)
+            ].join("|");
+          }
+
+          function stableIDFor(index, fingerprint) {
+            return String(index) + ":" + fingerprint;
+          }
+
+          function centerObscured(element, rect) {
+            if (rect.width <= 0 || rect.height <= 0) return true;
+            const x = Math.min(Math.max(rect.left + rect.width / 2, 0), window.innerWidth - 1);
+            const y = Math.min(Math.max(rect.top + rect.height / 2, 0), window.innerHeight - 1);
+            const top = document.elementFromPoint(x, y);
+            return Boolean(top && top !== element && !element.contains(top));
+          }
+
+          function supportedActionsFor(element, role, interactive, editable) {
+            const actions = [];
+            if (interactive) actions.push("tap");
+            if (editable) {
+              actions.push("fill");
+              actions.push("clear");
+              actions.push("pressEnter");
+            }
+            const style = window.getComputedStyle(element);
+            if (/(auto|scroll)/.test(style.overflow + style.overflowX + style.overflowY)) {
+              actions.push("scroll");
+            }
+            if (["video", "button", "link", "tab", "menuitem"].includes(role) || element.tagName.toLowerCase() === "video") {
+              actions.push("tap");
+            }
+            return Array.from(new Set(actions));
+          }
+
           const candidates = Array.from(document.querySelectorAll("body *"));
           const elements = [];
           const viewport = currentViewport();
@@ -240,10 +290,12 @@ enum BrowserAccessibilityScript {
             const ariaHidden = element.closest("[aria-hidden='true']") !== null || element.getAttribute("aria-hidden") === "true";
             const landmarkRoles = ["article", "form", "main", "navigation", "section"];
             const roleIsMeaningful = Boolean(role && (!landmarkRoles.includes(role) || label.label));
+            const editable = isEditable(element, role);
             const semantic = Boolean(
               roleIsMeaningful ||
               label.label ||
               interactive ||
+              editable ||
               textLeaf ||
               ["img", "video", "svg", "canvas"].includes(tagName)
             );
@@ -258,7 +310,11 @@ enum BrowserAccessibilityScript {
               continue;
             }
 
+            const path = pathFor(element);
+            const selectorFingerprint = selectorFingerprintFor(element, role, label.label, path, rect);
+
             elements.push({
+              stableID: stableIDFor(seenVisible - 1, selectorFingerprint),
               index: seenVisible - 1,
               tagName,
               role,
@@ -273,6 +329,8 @@ enum BrowserAccessibilityScript {
               isVisible: true,
               isInteractive: interactive,
               isDisabled: isDisabled(element),
+              isEditable: editable,
+              isObscuredAtCenter: centerObscured(element, rect),
               ariaHidden,
               bounds: {
                 x: rect.x,
@@ -280,13 +338,20 @@ enum BrowserAccessibilityScript {
                 width: rect.width,
                 height: rect.height
               },
-              path: pathFor(element)
+              path,
+              selectorFingerprint,
+              supportedActions: supportedActionsFor(element, role, interactive, editable)
             });
           }
 
           return {
             url: window.location.href,
             title: document.title,
+            schemaVersion: 1,
+            scrollX: window.scrollX,
+            scrollY: window.scrollY,
+            viewportOffsetX: viewport.offsetLeft,
+            viewportOffsetY: viewport.offsetTop,
             viewportWidth: viewport.width,
             viewportHeight: viewport.height,
             elementCount: seenVisible,

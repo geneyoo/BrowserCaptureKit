@@ -5,6 +5,7 @@ public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
     case response(CapturedResponse)
     case browserState(BrowserStateSnapshot)
     case accessibility(BrowserAccessibilitySnapshot)
+    case action(BrowserActionResult)
     case console(BrowserConsoleEvent)
     case scriptError(BrowserScriptError)
 
@@ -18,6 +19,8 @@ public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
             snapshot.id
         case .accessibility(let snapshot):
             snapshot.id
+        case .action(let result):
+            result.id
         case .console(let event):
             event.id
         case .scriptError(let error):
@@ -35,6 +38,8 @@ public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
             snapshot.capturedAt
         case .accessibility(let snapshot):
             snapshot.capturedAt
+        case .action(let result):
+            result.capturedAt
         case .console(let event):
             event.capturedAt
         case .scriptError(let error):

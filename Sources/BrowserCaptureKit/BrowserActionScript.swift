@@ -1,12 +1,44 @@
 import Foundation
 
-// swiftlint:disable function_body_length
+// swiftlint:disable function_body_length type_body_length
 enum BrowserActionScript {
+    static func tapSource(target: BrowserElementTarget) -> String {
+        actionSource(action: "tap", target: target)
+    }
+
+    static func fillSource(target: BrowserElementTarget, text: String, submit: Bool) -> String {
+        actionSource(action: "fill", target: target, text: text, submit: submit)
+    }
+
+    static func clearSource(target: BrowserElementTarget) -> String {
+        actionSource(action: "clear", target: target)
+    }
+
+    static func pressEnterSource(target: BrowserElementTarget?) -> String {
+        actionSource(action: "pressEnter", target: target)
+    }
+
+    static func waitForElementSource(target: BrowserElementTarget) -> String {
+        actionSource(action: "resolve", target: target)
+    }
+
     static func clickElementSource(label: String, role: String?) -> String {
+        tapSource(target: .label(label, role: role))
+    }
+
+    private static func actionSource(
+        action: String,
+        target: BrowserElementTarget?,
+        text: String? = nil,
+        submit: Bool = false
+    ) -> String {
         """
         (() => {
-          const targetLabel = \(javaScriptStringLiteral(label));
-          const targetRole = \(javaScriptNullableStringLiteral(role));
+          const action = \(javaScriptStringLiteral(action));
+          const target = \(javaScriptLiteral(target));
+          const fillText = \(javaScriptNullableStringLiteral(text));
+          const shouldSubmit = \(submit ? "true" : "false");
+          const maxCandidates = 8;
 
           function compact(value) {
             return String(value || "").replace(/\\s+/g, " ").trim();
@@ -63,6 +95,12 @@ enum BrowserActionScript {
               if (type === "submit" || type === "button" || type === "reset") return "button";
               return "textbox";
             }
+            if (/^h[1-6]$/.test(tag)) return "heading";
+            if (tag === "nav") return "navigation";
+            if (tag === "main") return "main";
+            if (tag === "article") return "article";
+            if (tag === "section") return "section";
+            if (tag === "form") return "form";
             return nullable(element.getAttribute("role"));
           }
 
@@ -99,22 +137,79 @@ enum BrowserActionScript {
             return compact(element.innerText || element.textContent || "");
           }
 
+          function isInteractive(element, role) {
+            const tag = element.tagName.toLowerCase();
+            return Boolean(
+              tag === "button" ||
+              tag === "select" ||
+              tag === "textarea" ||
+              tag === "input" ||
+              (tag === "a" && element.hasAttribute("href")) ||
+              element.hasAttribute("onclick") ||
+              element.hasAttribute("contenteditable") ||
+              element.tabIndex >= 0 ||
+              ["button", "link", "menuitem", "tab", "checkbox", "radio", "switch", "slider", "textbox", "combobox"].includes(role)
+            );
+          }
+
+          function isEditable(element, role) {
+            const tag = element.tagName.toLowerCase();
+            const type = String(element.getAttribute("type") || "").toLowerCase();
+            if (element.isContentEditable || element.getAttribute("contenteditable") === "true") return true;
+            if (tag === "textarea") return true;
+            if (tag === "input" && !["button", "checkbox", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(type)) return true;
+            return role === "textbox" && !isDisabled(element);
+          }
+
           function isDisabled(element) {
             return Boolean(element.disabled || element.getAttribute("aria-disabled") === "true");
           }
 
-          function isVisible(element) {
-            const rect = element.getBoundingClientRect();
-            if (rect.width <= 0 || rect.height <= 0) return false;
+          function currentViewport() {
+            if (window.visualViewport) {
+              return {
+                offsetLeft: window.visualViewport.offsetLeft || 0,
+                offsetTop: window.visualViewport.offsetTop || 0,
+                width: window.visualViewport.width || window.innerWidth,
+                height: window.visualViewport.height || window.innerHeight
+              };
+            }
+            return {
+              offsetLeft: 0,
+              offsetTop: 0,
+              width: window.innerWidth,
+              height: window.innerHeight
+            };
+          }
+
+          function viewportRect(rect, viewport) {
+            return {
+              x: rect.x - viewport.offsetLeft,
+              y: rect.y - viewport.offsetTop,
+              width: rect.width,
+              height: rect.height,
+              top: rect.top - viewport.offsetTop,
+              right: rect.right - viewport.offsetLeft,
+              bottom: rect.bottom - viewport.offsetTop,
+              left: rect.left - viewport.offsetLeft
+            };
+          }
+
+          function visibleInViewport(element, viewport) {
+            const rect = viewportRect(element.getBoundingClientRect(), viewport);
+            if (rect.width <= 0 || rect.height <= 0) {
+              return { visible: false, rect };
+            }
             const style = window.getComputedStyle(element);
-            return style.display !== "none" &&
+            const visible = style.display !== "none" &&
               style.visibility !== "hidden" &&
               style.visibility !== "collapse" &&
               Number(style.opacity || "1") > 0 &&
               rect.bottom >= 0 &&
               rect.right >= 0 &&
-              rect.top <= (window.visualViewport?.height || window.innerHeight) &&
-              rect.left <= (window.visualViewport?.width || window.innerWidth);
+              rect.top <= viewport.height &&
+              rect.left <= viewport.width;
+            return { visible, rect };
           }
 
           function pathFor(element) {
@@ -140,93 +235,321 @@ enum BrowserActionScript {
             return "body" + (parts.length ? " > " + parts.join(" > ") : "");
           }
 
-          const wantedLabel = normalized(targetLabel);
-          const wantedRole = normalized(targetRole || "");
-          const matches = Array.from(document.querySelectorAll("body *"))
-            .filter((element) => isVisible(element) && !isDisabled(element))
-            .map((element) => {
-              const role = roleFor(element);
-              const label = labelFor(element, role);
-              const normalizedLabel = normalized(label);
-              const normalizedRole = normalized(role || "");
-              let score = 0;
-              if (normalizedLabel === wantedLabel) score += 100;
-              if (normalizedLabel.includes(wantedLabel)) score += 50;
-              if (wantedRole && normalizedRole === wantedRole) score += 25;
-              if (["button", "link", "tab", "menuitem"].includes(normalizedRole)) score += 10;
-              const rect = element.getBoundingClientRect();
-              const area = rect.width * rect.height;
-              return { element, role, label, score, area, path: pathFor(element) };
-            })
-            .filter((candidate) => candidate.score >= 50)
-            .sort((left, right) => {
-              if (right.score !== left.score) return right.score - left.score;
-              return left.area - right.area;
-            });
+          function selectorFingerprintFor(element, role, label, path, rect) {
+            return [
+              element.tagName.toLowerCase(),
+              role || "",
+              normalized(label || ""),
+              nullable(element.getAttribute("href")) || nullable(element.href) || "",
+              path || "",
+              Math.round(rect.width || 0) + "x" + Math.round(rect.height || 0)
+            ].join("|");
+          }
 
-          if (!matches.length) {
+          function stableIDFor(index, fingerprint) {
+            return String(index) + ":" + fingerprint;
+          }
+
+          function centerObscured(element, rect) {
+            if (rect.width <= 0 || rect.height <= 0) return true;
+            const x = Math.min(Math.max(rect.left + rect.width / 2, 0), window.innerWidth - 1);
+            const y = Math.min(Math.max(rect.top + rect.height / 2, 0), window.innerHeight - 1);
+            const top = document.elementFromPoint(x, y);
+            return Boolean(top && top !== element && !element.contains(top));
+          }
+
+          function candidateSummary(element, index, score) {
+            const viewport = currentViewport();
+            const { visible, rect } = visibleInViewport(element, viewport);
+            const role = roleFor(element);
+            const label = nullable(labelFor(element, role));
+            const text = nullable(element.innerText || element.textContent || "");
+            const path = pathFor(element);
+            const fingerprint = selectorFingerprintFor(element, role, label, path, rect);
             return {
-              succeeded: false,
-              message: "No visible element matched label '" + targetLabel + "'.",
-              matchedElementCount: 0,
-              label: targetLabel,
-              role: targetRole,
-              path: null
+              element,
+              score,
+              index,
+              tagName: element.tagName.toLowerCase(),
+              role,
+              label,
+              text,
+              path,
+              selectorFingerprint: fingerprint,
+              stableID: stableIDFor(index, fingerprint),
+              bounds: {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height
+              },
+              isVisible: visible,
+              isInteractive: isInteractive(element, role),
+              isDisabled: isDisabled(element),
+              isEditable: isEditable(element, role),
+              isObscuredAtCenter: centerObscured(element, rect)
             };
           }
 
-          const match = matches[0];
-          const element = match.element;
-          element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
-
-          const rect = element.getBoundingClientRect();
-          const x = rect.left + rect.width / 2;
-          const y = rect.top + rect.height / 2;
-
-          try {
-            element.focus({ preventScroll: true });
-          } catch (_) {}
-
-          const common = {
-            bubbles: true,
-            cancelable: true,
-            composed: true,
-            clientX: x,
-            clientY: y,
-            screenX: x,
-            screenY: y,
-            view: window
-          };
-
-          if (window.PointerEvent) {
-            element.dispatchEvent(new PointerEvent("pointerover", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
-            element.dispatchEvent(new PointerEvent("pointermove", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
-            element.dispatchEvent(new PointerEvent("pointerdown", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
-          }
-          element.dispatchEvent(new MouseEvent("mouseover", common));
-          element.dispatchEvent(new MouseEvent("mousemove", common));
-          element.dispatchEvent(new MouseEvent("mousedown", common));
-
-          if (window.PointerEvent) {
-            element.dispatchEvent(new PointerEvent("pointerup", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
-          }
-          element.dispatchEvent(new MouseEvent("mouseup", common));
-          element.dispatchEvent(new MouseEvent("click", common));
-
-          if (typeof element.click === "function") {
-            element.click();
+          function serializable(summary) {
+            if (!summary) return null;
+            return {
+              score: summary.score || 0,
+              index: summary.index,
+              tagName: summary.tagName,
+              role: summary.role,
+              label: summary.label,
+              text: summary.text,
+              path: summary.path,
+              selectorFingerprint: summary.selectorFingerprint,
+              bounds: summary.bounds,
+              isVisible: Boolean(summary.isVisible),
+              isInteractive: Boolean(summary.isInteractive),
+              isDisabled: Boolean(summary.isDisabled),
+              isEditable: Boolean(summary.isEditable),
+              isObscuredAtCenter: Boolean(summary.isObscuredAtCenter)
+            };
           }
 
-          return {
-            succeeded: true,
-            message: "Clicked '" + match.label + "'.",
-            matchedElementCount: matches.length,
-            label: match.label,
-            role: match.role,
-            path: match.path
-          };
+          function allElements() {
+            const values = [];
+            const visit = (root) => {
+              for (const element of root.querySelectorAll("*")) {
+                values.push(element);
+                if (element.shadowRoot) {
+                  visit(element.shadowRoot);
+                }
+              }
+            };
+            visit(document);
+            return values;
+          }
+
+          function scoreElement(element, index) {
+            const summary = candidateSummary(element, index, 0);
+            const wantedStableID = compact(target?.snapshotElementID || "");
+            const wantedPath = compact(target?.path || "");
+            const wantedFingerprint = compact(target?.selectorFingerprint || "");
+            const wantedRole = normalized(target?.role || "");
+            const wantedLabel = normalized(target?.label || "");
+            const wantedText = normalized(target?.text || "");
+            let score = 0;
+
+            if (wantedStableID && summary.stableID === wantedStableID) score += 500;
+            if (wantedFingerprint && summary.selectorFingerprint === wantedFingerprint) score += 350;
+            if (wantedPath && summary.path === wantedPath) score += 275;
+
+            const role = normalized(summary.role || "");
+            const label = normalized(summary.label || "");
+            const text = normalized(summary.text || "");
+
+            if (wantedRole && role === wantedRole) score += 50;
+            if (wantedLabel && label === wantedLabel) score += 180;
+            if (wantedLabel && label.includes(wantedLabel)) score += 90;
+            if (wantedText && text === wantedText) score += 120;
+            if (wantedText && text.includes(wantedText)) score += 60;
+            if (!wantedLabel && !wantedText && wantedRole && role === wantedRole) score += 10;
+            if (summary.isInteractive) score += 8;
+            if (summary.isVisible) score += 6;
+            if (summary.isDisabled) score -= 100;
+
+            summary.score = score;
+            return summary;
+          }
+
+          function resolveTarget() {
+            if (!target && action !== "pressEnter") {
+              return [];
+            }
+            if (!target && action === "pressEnter") {
+              const active = document.activeElement;
+              return active ? [candidateSummary(active, 0, 100)] : [];
+            }
+            return allElements()
+              .map(scoreElement)
+              .filter((summary) => summary.score >= 50)
+              .sort((left, right) => {
+                if (right.score !== left.score) return right.score - left.score;
+                const leftArea = (left.bounds.width || 0) * (left.bounds.height || 0);
+                const rightArea = (right.bounds.width || 0) * (right.bounds.height || 0);
+                return leftArea - rightArea;
+              });
+          }
+
+          function baseResult(status, message, matches, selected, warnings = []) {
+            return {
+              status,
+              succeeded: status === "succeeded",
+              message,
+              matchedElementCount: matches.length,
+              selectedElement: serializable(selected),
+              candidates: matches.slice(0, maxCandidates).map(serializable),
+              warnings
+            };
+          }
+
+          function failIfUnactionable(matches, selected, requiresEditable) {
+            if (!matches.length || !selected) {
+              return baseResult("noMatch", "No element matched the requested target.", matches, selected);
+            }
+            if (matches.length > 1 && matches[0].score === matches[1].score && matches[0].score >= 180) {
+              return baseResult("ambiguousMatch", "Multiple elements matched the requested target.", matches, selected);
+            }
+            if (!selected.isVisible) {
+              return baseResult("notVisible", "Matched element is not visible.", matches, selected);
+            }
+            if (selected.isDisabled) {
+              return baseResult("notEnabled", "Matched element is disabled.", matches, selected);
+            }
+            if (requiresEditable && !selected.isEditable) {
+              return baseResult("notEditable", "Matched element is not editable.", matches, selected);
+            }
+            if (action === "tap" && selected.isObscuredAtCenter) {
+              return baseResult("obscured", "Matched element is obscured at its center point.", matches, selected);
+            }
+            return null;
+          }
+
+          function dispatchTap(element, summary) {
+            element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+            const rect = element.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+
+            try {
+              element.focus({ preventScroll: true });
+            } catch (_) {}
+
+            const common = {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              clientX: x,
+              clientY: y,
+              screenX: x,
+              screenY: y,
+              view: window
+            };
+
+            if (window.PointerEvent) {
+              element.dispatchEvent(new PointerEvent("pointerover", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
+              element.dispatchEvent(new PointerEvent("pointermove", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
+              element.dispatchEvent(new PointerEvent("pointerdown", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
+            }
+            element.dispatchEvent(new MouseEvent("mouseover", common));
+            element.dispatchEvent(new MouseEvent("mousemove", common));
+            element.dispatchEvent(new MouseEvent("mousedown", common));
+
+            if (window.PointerEvent) {
+              element.dispatchEvent(new PointerEvent("pointerup", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
+            }
+            element.dispatchEvent(new MouseEvent("mouseup", common));
+            element.dispatchEvent(new MouseEvent("click", common));
+
+            if (typeof element.click === "function") {
+              element.click();
+            }
+
+            return baseResult("succeeded", "Tapped '" + (summary.label || summary.text || summary.path || "element") + "'.", [summary], summary);
+          }
+
+          function setNativeValue(element, value) {
+            const prototype = element.tagName.toLowerCase() === "textarea"
+              ? window.HTMLTextAreaElement.prototype
+              : window.HTMLInputElement.prototype;
+            const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+            if (descriptor && descriptor.set) {
+              descriptor.set.call(element, value);
+            } else {
+              element.value = value;
+            }
+          }
+
+          function dispatchFill(element, summary, value) {
+            element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+            element.focus();
+            if (element.isContentEditable || element.getAttribute("contenteditable") === "true") {
+              element.textContent = value;
+            } else {
+              setNativeValue(element, value);
+            }
+            element.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: value }));
+            element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
+            element.dispatchEvent(new Event("change", { bubbles: true }));
+
+            if (shouldSubmit) {
+              const form = element.closest && element.closest("form");
+              if (form && typeof form.requestSubmit === "function") {
+                form.requestSubmit();
+              } else {
+                dispatchEnter(element);
+              }
+            }
+
+            return baseResult("succeeded", "Filled '" + (summary.label || summary.path || "field") + "'.", [summary], summary);
+          }
+
+          function dispatchEnter(element) {
+            const common = { bubbles: true, cancelable: true, key: "Enter", code: "Enter", which: 13, keyCode: 13 };
+            element.dispatchEvent(new KeyboardEvent("keydown", common));
+            element.dispatchEvent(new KeyboardEvent("keypress", common));
+            element.dispatchEvent(new KeyboardEvent("keyup", common));
+          }
+
+          const matches = resolveTarget();
+          const selected = matches[0] || null;
+
+          if (action === "resolve") {
+            return matches.length
+              ? baseResult("succeeded", "Matched element.", matches, selected)
+              : baseResult("noMatch", "No element matched the requested target.", matches, selected);
+          }
+
+          const selectedElement = selected?.element || document.activeElement;
+          if (action === "tap") {
+            const failure = failIfUnactionable(matches, selected, false);
+            if (failure) return failure;
+            return dispatchTap(selected.element, selected);
+          }
+
+          if (action === "fill") {
+            const failure = failIfUnactionable(matches, selected, true);
+            if (failure) return failure;
+            return dispatchFill(selected.element, selected, fillText || "");
+          }
+
+          if (action === "clear") {
+            const failure = failIfUnactionable(matches, selected, true);
+            if (failure) return failure;
+            return dispatchFill(selected.element, selected, "");
+          }
+
+          if (action === "pressEnter") {
+            if (!selectedElement) {
+              return baseResult("noMatch", "No focused or matched element for Enter.", matches, selected);
+            }
+            dispatchEnter(selectedElement);
+            return baseResult("succeeded", "Pressed Enter.", matches, selected || candidateSummary(selectedElement, 0, 100));
+          }
+
+          return baseResult("unsupported", "Unsupported action '" + action + "'.", matches, selected);
         })();
         """
+    }
+
+    private static func javaScriptLiteral(_ value: BrowserElementTarget?) -> String {
+        guard let value else {
+            return "null"
+        }
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(value),
+            let text = String(data: data, encoding: .utf8)
+        else {
+            return "null"
+        }
+        return text
     }
 
     private static func javaScriptNullableStringLiteral(_ value: String?) -> String {
