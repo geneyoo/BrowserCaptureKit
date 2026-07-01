@@ -95,7 +95,7 @@ public final class BrowserCaptureSession: NSObject {
                 return
             }
 
-            let snapshot = await makeBrowserStateSnapshot(reason: reason)
+            let snapshot = await browserStateSnapshot(reason: reason)
             onEvent?(.browserState(snapshot))
         }
     }
@@ -106,9 +106,17 @@ public final class BrowserCaptureSession: NSObject {
                 return
             }
 
-            let snapshot = await makeAccessibilitySnapshot(reason: reason)
+            let snapshot = await accessibilitySnapshot(reason: reason)
             onEvent?(.accessibility(snapshot))
         }
+    }
+
+    public func browserStateSnapshot(reason: String = "manual") async -> BrowserStateSnapshot {
+        await makeBrowserStateSnapshot(reason: reason)
+    }
+
+    public func accessibilitySnapshot(reason: String = "manual") async -> BrowserAccessibilitySnapshot {
+        await makeAccessibilitySnapshot(reason: reason)
     }
 
     private func websiteDataStore() -> WKWebsiteDataStore {
