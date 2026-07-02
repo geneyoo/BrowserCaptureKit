@@ -1,0 +1,2367 @@
+{
+  "meta": {
+    "source": "M1.0a on-device recon — real delta.com / LivePerson UMS",
+    "capturedApprox": "2026-07-01",
+    "account": "29060121",
+    "socket": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer",
+    "note": "JWT redacted. Frames as captured (main-frame). WS-PARSE input fixture.",
+    "frameCount": 36
+  },
+  "frames": [
+    {
+      "direction": "open",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": null
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "ba956b5b-742a-476a-b938-e7eebe0995943-65005",
+        "type": "GetClock",
+        "body": {}
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "a14b3163-80d7-41cc-8142-676646bc0fe6e-24597",
+        "type": "InitConnection",
+        "body": {},
+        "headers": [
+          {
+            "type": ".ams.headers.ConsumerAuthentication",
+            "jwt": "<redacted>"
+          },
+          {
+            "type": ".ams.headers.ClientProperties",
+            "features": [
+              "AUTO_MESSAGES",
+              "RICH_CONTENT",
+              "CO_BROWSE",
+              "PHOTO_SHARING",
+              "QUICK_REPLIES",
+              "MULTI_DIALOG",
+              "FILE_SHARING",
+              "MARKDOWN_HYPERLINKS",
+              "RICH_TEXT_FORMATTING_V1"
+            ],
+            "appId": "webAsync",
+            "integrationVersion": "3.14.0",
+            "integration": "WEB_SDK",
+            "timeZone": "America/Los_Angeles"
+          }
+        ]
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "ba956b5b-742a-476a-b938-e7eebe0995943-65005",
+        "code": 200,
+        "body": {
+          "currentTime": 1782961583939
+        },
+        "type": "GetClockResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "a14b3163-80d7-41cc-8142-676646bc0fe6e-24597",
+        "code": 200,
+        "body": "Connection initialized successfully",
+        "type": "StringResponse"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "5905dee0-6d0d-4af3-8747-a7c7ef9771857-16453",
+        "type": "userprofile.GetUserProfile",
+        "body": {}
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "e133040d-d4d5-4a44-bc0a-c783a3d3652ab-72575",
+        "type": "brandprofile.GetBrandProfile",
+        "body": {
+          "brandId": "29060121"
+        }
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "5905dee0-6d0d-4af3-8747-a7c7ef9771857-16453",
+        "code": 200,
+        "body": {
+          "firstName": "",
+          "lastName": "",
+          "nickName": "",
+          "userId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+          "avatarUrl": null,
+          "role": null,
+          "backgndImgUri": null,
+          "description": null,
+          "privateData": {
+            "mobileNum": "null",
+            "mail": null,
+            "pushNotificationData": {
+              "serviceName": null,
+              "certName": "webAsync",
+              "token": "<redacted>"
+            }
+          },
+          "authenticatedData": null,
+          "claims": null,
+          "isDeleted": false,
+          "acr": "0"
+        },
+        "type": "userprofile.GetUserProfileResponse"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "fa0edb3d-7eee-4562-bf9a-b7569bddae5a9-57763",
+        "type": "cqm.SubscribeExConversations",
+        "body": {
+          "stage": [
+            "OPEN",
+            "CLOSE",
+            "LOCKED"
+          ],
+          "convState": [
+            "OPEN",
+            "CLOSE",
+            "LOCKED"
+          ]
+        }
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "e133040d-d4d5-4a44-bc0a-c783a3d3652ab-72575",
+        "code": 200,
+        "body": {
+          "brandId": "29060121",
+          "name": "",
+          "description": "",
+          "category": "",
+          "dateJoined": 0,
+          "lastUpdated": 0,
+          "logoImg": "",
+          "backgroundImg": "",
+          "SkillIds": [
+            "1588789614"
+          ],
+          "defaultTTRs": {
+            "CUSTOM": 1001,
+            "URGENT": 300,
+            "PRIORITIZED": 300,
+            "NORMAL": 600
+          },
+          "delay": {
+            "tillWhen": -1
+          },
+          "websiteUrl": ""
+        },
+        "type": "brandprofile.GetBrandProfileResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "fa0edb3d-7eee-4562-bf9a-b7569bddae5a9-57763",
+        "code": 200,
+        "body": {
+          "subscriptionId": "41fc1f8e-793e-4456-9cad-85389653ff4f"
+        },
+        "type": "cqm.SubscribeExConversationsResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "subscriptionId": "41fc1f8e-793e-4456-9cad-85389653ff4f",
+          "sentTs": 1782961584502,
+          "changes": [
+            {
+              "type": "UPSERT",
+              "result": {
+                "convId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                "effectiveTTR": -1,
+                "conversationDetails": {
+                  "skillId": "4349740438",
+                  "participants": [
+                    {
+                      "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                      "role": "ASSIGNED_AGENT"
+                    },
+                    {
+                      "id": "e10b88f9-4ffe-58d5-a8a8-ade5dc3c2571",
+                      "role": "CONTROLLER"
+                    },
+                    {
+                      "id": "86e6cdcf-2411-51d3-bd9c-8b7deedae011",
+                      "role": "CONTROLLER"
+                    },
+                    {
+                      "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                      "role": "CONSUMER"
+                    }
+                  ],
+                  "dialogs": [
+                    {
+                      "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                      "participantsDetails": [
+                        {
+                          "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                          "role": "CONSUMER",
+                          "state": "ACTIVE"
+                        },
+                        {
+                          "id": "e10b88f9-4ffe-58d5-a8a8-ade5dc3c2571",
+                          "role": "CONTROLLER",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.5056277738"
+                        },
+                        {
+                          "id": "86e6cdcf-2411-51d3-bd9c-8b7deedae011",
+                          "role": "CONTROLLER",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.1596650114"
+                        },
+                        {
+                          "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                          "role": "ASSIGNED_AGENT",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.7410586438"
+                        }
+                      ],
+                      "dialogType": "MAIN",
+                      "channelType": "MESSAGING",
+                      "state": "OPEN",
+                      "creationTs": 1782960410530,
+                      "metaDataLastUpdateTs": 1782960410530
+                    }
+                  ],
+                  "brandId": "29060121",
+                  "state": "OPEN",
+                  "stage": "OPEN",
+                  "startTs": 1782960410530,
+                  "metaDataLastUpdateTs": 1782960411679,
+                  "ttr": {
+                    "ttrType": "PRIORITIZED",
+                    "value": 300
+                  },
+                  "conversationHandlerDetails": {
+                    "accountId": "29060121",
+                    "skillId": "4349740438"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "type": "cqm.ExConversationChangeNotification"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "ee10ce98-09ea-4aa7-8e31-a78e25e00fe28-39365",
+        "type": "ms.SubscribeMessagingEvents",
+        "body": {
+          "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "fromSeq": 0
+        }
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "ee10ce98-09ea-4aa7-8e31-a78e25e00fe28-39365",
+        "code": 200,
+        "body": {
+          "subscriptionId": "28047375-2302-4a39-b391-dd6c23f92019"
+        },
+        "type": "GenericSubscribeResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 0,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782960410874,
+              "event": {
+                "type": "ContentEvent",
+                "message": "No, continue as guest",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "event": {
+                    "contentType": "text/plain",
+                    "message": "Hi! I am Delta's virtual assistant.\n\nIf you are a SkyMiles Member, you can sign in for a secure and personalized experience.\n\nWould you like to log in?\n\nNote: This chat is recorded",
+                    "quickReplies": {
+                      "type": "quickReplies",
+                      "itemsPerRow": 8,
+                      "replies": [
+                        {
+                          "type": "button",
+                          "tooltip": "Yes, log in",
+                          "title": "Yes, log in",
+                          "accessibility": {},
+                          "click": {
+                            "actions": [
+                              {
+                                "type": "publishText",
+                                "text": "Yes, log in"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "tooltip": "Join SkyMiles",
+                          "title": "Join SkyMiles",
+                          "accessibility": {},
+                          "click": {
+                            "actions": [
+                              {
+                                "type": "publishText",
+                                "text": "Join SkyMiles"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "button",
+                          "tooltip": "No, continue as guest",
+                          "title": "No, continue as guest",
+                          "accessibility": {},
+                          "click": {
+                            "actions": [
+                              {
+                                "type": "publishText",
+                                "text": "No, continue as guest"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "type": "ContentEvent"
+                  },
+                  "type": "WelcomeMessage"
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 2,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960414085,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Okay, no problem",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 5,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960414357,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Here are some common topics that I can assist you with. You can either select one of them or type in your question",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Flight change",
+                      "tooltip": "Flight change",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Flight change"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Flight change",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Flight cancel",
+                      "tooltip": "Flight cancel",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Flight cancel"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Flight cancel",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "eCredits",
+                      "tooltip": "eCredits",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "eCredits"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "eCredits",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Baggage",
+                      "tooltip": "Baggage",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Baggage"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Baggage",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "SkyMiles & Profile",
+                      "tooltip": "SkyMiles & Profile",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "SkyMiles & Profile"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "SkyMiles & Profile",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 8,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782960418207,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Test",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 10,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960419413,
+              "event": {
+                "type": "ContentEvent",
+                "message": "I didn't quite catch that",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 13,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960419656,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Could you please rephrase your question in a short and simple sentence or select from one of the options below",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Flight change",
+                      "tooltip": "Flight change",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Flight change"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Flight change",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Flight cancel",
+                      "tooltip": "Flight cancel",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Flight cancel"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Flight cancel",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "eCredits",
+                      "tooltip": "eCredits",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "eCredits"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "eCredits",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Baggage",
+                      "tooltip": "Baggage",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Baggage"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Baggage",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "SkyMiles & Profile",
+                      "tooltip": "SkyMiles & Profile",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "SkyMiles & Profile"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "SkyMiles & Profile",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 17,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782960572352,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "ACTION",
+                "sequenceList": [
+                  13
+                ]
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "id": "SkyMiles & Profile",
+                  "type": "ExternalId"
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 18,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782960572387,
+              "event": {
+                "type": "ContentEvent",
+                "message": "SkyMiles & Profile",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "id": "SkyMiles & Profile",
+                  "type": "ExternalId"
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 21,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960573816,
+              "event": {
+                "type": "ContentEvent",
+                "message": "I can help with all kinds of SkyMiles and profile related questions. Select an option to continue",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Check SkyMiles details",
+                      "tooltip": "Check SkyMiles details",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Check SkyMiles details"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Check SkyMiles details",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Report missing Miles",
+                      "tooltip": "Report missing Miles",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Report missing Miles"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Report missing Miles",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Use or manage Miles",
+                      "tooltip": "Use or manage Miles",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Use or manage Miles"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Use or manage Miles",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Manage SkyMiles profile",
+                      "tooltip": "Manage SkyMiles profile",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Manage SkyMiles profile"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Manage SkyMiles profile",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Other",
+                      "tooltip": "Other",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Other"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Other",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 24,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782960575990,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Joe",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 26,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960577371,
+              "event": {
+                "type": "ContentEvent",
+                "message": "I can help with all kinds of SkyMiles and profile related questions. Select an option to continue",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Check SkyMiles details",
+                      "tooltip": "Check SkyMiles details",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Check SkyMiles details"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Check SkyMiles details",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Report missing Miles",
+                      "tooltip": "Report missing Miles",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Report missing Miles"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Report missing Miles",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Use or manage Miles",
+                      "tooltip": "Use or manage Miles",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Use or manage Miles"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Use or manage Miles",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Manage SkyMiles profile",
+                      "tooltip": "Manage SkyMiles profile",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Manage SkyMiles profile"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Manage SkyMiles profile",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Other",
+                      "tooltip": "Other",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Other"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Other",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 29,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782960582324,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Should I log in first",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 31,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782960583866,
+              "event": {
+                "type": "ContentEvent",
+                "message": "I can help with all kinds of SkyMiles and profile related questions. Select an option to continue",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Check SkyMiles details",
+                      "tooltip": "Check SkyMiles details",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Check SkyMiles details"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Check SkyMiles details",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Report missing Miles",
+                      "tooltip": "Report missing Miles",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Report missing Miles"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Report missing Miles",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Use or manage Miles",
+                      "tooltip": "Use or manage Miles",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Use or manage Miles"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Use or manage Miles",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Manage SkyMiles profile",
+                      "tooltip": "Manage SkyMiles profile",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Manage SkyMiles profile"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Manage SkyMiles profile",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Other",
+                      "tooltip": "Other",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Other"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Other",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 35,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961260332,
+              "event": {
+                "type": "ContentEvent",
+                "message": "How do I log in",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 37,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961261839,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Can you let me know the issue you are facing?",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Reset password",
+                      "tooltip": "Reset password",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Reset password"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Reset password",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Forgot SkyMiles number",
+                      "tooltip": "Forgot SkyMiles number",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Forgot SkyMiles number"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Forgot SkyMiles number",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Account locked",
+                      "tooltip": "Account locked",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Account locked"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Account locked",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Something else",
+                      "tooltip": "Something else",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Something else"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Something else",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 40,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961265087,
+              "event": {
+                "type": "ContentEvent",
+                "message": "And give u my info here",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 42,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961268641,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Can you let me know the issue you are facing?",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Reset password",
+                      "tooltip": "Reset password",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Reset password"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Reset password",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Forgot SkyMiles number",
+                      "tooltip": "Forgot SkyMiles number",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Forgot SkyMiles number"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Forgot SkyMiles number",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Account locked",
+                      "tooltip": "Account locked",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Account locked"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Account locked",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "Something else",
+                      "tooltip": "Something else",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Something else"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Something else",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 43,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961268781,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "ACCEPT",
+                "sequenceList": [
+                  42
+                ]
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 46,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961271579,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "ACTION",
+                "sequenceList": [
+                  42
+                ]
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "id": "Something else",
+                  "type": "ExternalId"
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 47,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961271614,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Something else",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "id": "Something else",
+                  "type": "ExternalId"
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 50,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961273002,
+              "event": {
+                "type": "ContentEvent",
+                "message": "While I connect you to one of our representatives, I’ll just need to gather a few details",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 53,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961273255,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Based on our conversation do you still need help with the following?",
+                "contentType": "text/plain"
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 56,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961273488,
+              "event": {
+                "type": "ContentEvent",
+                "message": "'Test'",
+                "contentType": "text/plain",
+                "quickReplies": {
+                  "type": "quickReplies",
+                  "itemsPerRow": 2,
+                  "replies": [
+                    {
+                      "type": "button",
+                      "title": "Yes",
+                      "tooltip": "Yes",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "Yes"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "Yes",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "title": "No",
+                      "tooltip": "No",
+                      "click": {
+                        "actions": [
+                          {
+                            "type": "publishText",
+                            "text": "No"
+                          }
+                        ],
+                        "metadata": [
+                          {
+                            "id": "No",
+                            "type": "ExternalId"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 57,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961273583,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "READ",
+                "sequenceList": [
+                  56
+                ]
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            },
+            {
+              "sequence": 58,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961273641,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "READ",
+                "sequenceList": [
+                  56
+                ]
+              },
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "c0155cc6-0ef2-45e6-82da-775826c3e0263-83161",
+        "type": "ms.PublishEvent",
+        "body": {
+          "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "event": {
+            "type": "ChatStateEvent",
+            "chatState": "ACTIVE"
+          }
+        }
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "c0155cc6-0ef2-45e6-82da-775826c3e0263-83161",
+        "code": 200,
+        "body": {
+          "sequence": 0
+        },
+        "type": "ms.PublishEventResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "event": {
+                "type": "ChatStateEvent",
+                "chatState": "ACTIVE"
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "21d11e56-b9ff-4aa9-84ee-976ac70f0d553-9446",
+        "type": "ms.PublishEvent",
+        "body": {
+          "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "event": {
+            "type": "AcceptStatusEvent",
+            "status": "ACTION",
+            "sequenceList": [
+              56
+            ]
+          }
+        },
+        "metadata": [
+          {
+            "id": "No",
+            "type": "ExternalId"
+          }
+        ]
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "ea271f5e-0551-4a38-b108-e7360df97cd7c-73896",
+        "type": "ms.PublishEvent",
+        "body": {
+          "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "event": {
+            "type": "ContentEvent",
+            "contentType": "text/plain",
+            "message": "No"
+          }
+        },
+        "metadata": [
+          {
+            "id": "No",
+            "type": "ExternalId"
+          }
+        ]
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "21d11e56-b9ff-4aa9-84ee-976ac70f0d553-9446",
+        "code": 200,
+        "body": {
+          "sequence": 59
+        },
+        "type": "ms.PublishEventResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 59,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961590366,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "ACTION",
+                "sequenceList": [
+                  56
+                ]
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "id": "No",
+                  "type": "ExternalId"
+                }
+              ],
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "ea271f5e-0551-4a38-b108-e7360df97cd7c-73896",
+        "code": 200,
+        "body": {
+          "sequence": 60
+        },
+        "type": "ms.PublishEventResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 60,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961590403,
+              "event": {
+                "type": "ContentEvent",
+                "message": "No",
+                "contentType": "text/plain"
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "id": "No",
+                  "type": "ExternalId"
+                }
+              ],
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 61,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961590580,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "READ",
+                "sequenceList": [
+                  60
+                ]
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "subscriptionId": "41fc1f8e-793e-4456-9cad-85389653ff4f",
+          "sentTs": 1782961590656,
+          "changes": [
+            {
+              "type": "UPSERT",
+              "result": {
+                "convId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                "effectiveTTR": 1782961890403,
+                "conversationDetails": {
+                  "skillId": "4349740438",
+                  "participants": [
+                    {
+                      "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                      "role": "ASSIGNED_AGENT"
+                    },
+                    {
+                      "id": "e10b88f9-4ffe-58d5-a8a8-ade5dc3c2571",
+                      "role": "CONTROLLER"
+                    },
+                    {
+                      "id": "86e6cdcf-2411-51d3-bd9c-8b7deedae011",
+                      "role": "CONTROLLER"
+                    },
+                    {
+                      "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                      "role": "CONSUMER"
+                    }
+                  ],
+                  "dialogs": [
+                    {
+                      "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                      "participantsDetails": [
+                        {
+                          "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                          "role": "CONSUMER",
+                          "state": "ACTIVE"
+                        },
+                        {
+                          "id": "e10b88f9-4ffe-58d5-a8a8-ade5dc3c2571",
+                          "role": "CONTROLLER",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.5056277738"
+                        },
+                        {
+                          "id": "86e6cdcf-2411-51d3-bd9c-8b7deedae011",
+                          "role": "CONTROLLER",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.1596650114"
+                        },
+                        {
+                          "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                          "role": "ASSIGNED_AGENT",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.7410586438"
+                        }
+                      ],
+                      "dialogType": "MAIN",
+                      "channelType": "MESSAGING",
+                      "state": "OPEN",
+                      "creationTs": 1782960410530,
+                      "metaDataLastUpdateTs": 1782960410530
+                    }
+                  ],
+                  "brandId": "29060121",
+                  "state": "OPEN",
+                  "stage": "OPEN",
+                  "startTs": 1782960410530,
+                  "metaDataLastUpdateTs": 1782960411679,
+                  "ttr": {
+                    "ttrType": "PRIORITIZED",
+                    "value": 300
+                  },
+                  "conversationHandlerDetails": {
+                    "accountId": "29060121",
+                    "skillId": "4349740438"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "type": "cqm.ExConversationChangeNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "event": {
+                "type": "ChatStateEvent",
+                "chatState": "COMPOSING"
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "event": {
+                "type": "ChatStateEvent",
+                "chatState": "ACTIVE"
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 62,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961591584,
+              "event": {
+                "type": "ContentEvent",
+                "message": "Please state your concern in a short and simple sentence",
+                "contentType": "text/plain"
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "metadata": [
+                {
+                  "type": "BotResponse",
+                  "externalConversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                  "businessCases": [],
+                  "intents": []
+                }
+              ],
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "9994665a-6801-4c51-adfb-e7050d9aa2baa-99307",
+        "type": "ms.PublishEvent",
+        "body": {
+          "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+          "event": {
+            "type": "AcceptStatusEvent",
+            "status": "READ",
+            "sequenceList": [
+              62
+            ]
+          }
+        }
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 63,
+              "originatorId": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+              "originatorMetadata": {
+                "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                "role": "ASSIGNED_AGENT"
+              },
+              "serverTimestamp": 1782961591662,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "READ",
+                "sequenceList": [
+                  62
+                ]
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "subscriptionId": "41fc1f8e-793e-4456-9cad-85389653ff4f",
+          "sentTs": 1782961591726,
+          "changes": [
+            {
+              "type": "UPSERT",
+              "result": {
+                "convId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                "effectiveTTR": -1,
+                "conversationDetails": {
+                  "skillId": "4349740438",
+                  "participants": [
+                    {
+                      "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                      "role": "ASSIGNED_AGENT"
+                    },
+                    {
+                      "id": "e10b88f9-4ffe-58d5-a8a8-ade5dc3c2571",
+                      "role": "CONTROLLER"
+                    },
+                    {
+                      "id": "86e6cdcf-2411-51d3-bd9c-8b7deedae011",
+                      "role": "CONTROLLER"
+                    },
+                    {
+                      "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                      "role": "CONSUMER"
+                    }
+                  ],
+                  "dialogs": [
+                    {
+                      "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+                      "participantsDetails": [
+                        {
+                          "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                          "role": "CONSUMER",
+                          "state": "ACTIVE"
+                        },
+                        {
+                          "id": "e10b88f9-4ffe-58d5-a8a8-ade5dc3c2571",
+                          "role": "CONTROLLER",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.5056277738"
+                        },
+                        {
+                          "id": "86e6cdcf-2411-51d3-bd9c-8b7deedae011",
+                          "role": "CONTROLLER",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.1596650114"
+                        },
+                        {
+                          "id": "7fa568c0-47b8-5d67-96f9-4d6ab0114f6d",
+                          "role": "ASSIGNED_AGENT",
+                          "state": "ACTIVE",
+                          "agentId": "29060121.7410586438"
+                        }
+                      ],
+                      "dialogType": "MAIN",
+                      "channelType": "MESSAGING",
+                      "state": "OPEN",
+                      "creationTs": 1782960410530,
+                      "metaDataLastUpdateTs": 1782960410530
+                    }
+                  ],
+                  "brandId": "29060121",
+                  "state": "OPEN",
+                  "stage": "OPEN",
+                  "startTs": 1782960410530,
+                  "metaDataLastUpdateTs": 1782960411679,
+                  "ttr": {
+                    "ttrType": "PRIORITIZED",
+                    "value": 300
+                  },
+                  "conversationHandlerDetails": {
+                    "accountId": "29060121",
+                    "skillId": "4349740438"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "type": "cqm.ExConversationChangeNotification"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "9994665a-6801-4c51-adfb-e7050d9aa2baa-99307",
+        "code": 200,
+        "body": {
+          "sequence": 64
+        },
+        "type": "ms.PublishEventResponse"
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "notification",
+        "body": {
+          "changes": [
+            {
+              "sequence": 64,
+              "originatorId": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+              "originatorMetadata": {
+                "id": "cd13d1cf0addea75968fe77246ee98858d52c33bb6b941e78256b484e03bdb67",
+                "role": "CONSUMER"
+              },
+              "serverTimestamp": 1782961591780,
+              "event": {
+                "type": "AcceptStatusEvent",
+                "status": "READ",
+                "sequenceList": [
+                  62
+                ]
+              },
+              "conversationId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "dialogId": "04fd1ed2-14c5-47ca-982b-5c6dcabffbf0",
+              "messageAudience": "ALL"
+            }
+          ]
+        },
+        "type": "ms.MessagingEventNotification"
+      }
+    },
+    {
+      "direction": "outbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "req",
+        "id": "pingKey_29299",
+        "type": "GetClock",
+        "body": {}
+      }
+    },
+    {
+      "direction": "inbound",
+      "url": "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer?v=3",
+      "vendorHint": "livePerson",
+      "isMainFrame": true,
+      "frameOrigin": "https://www.delta.com",
+      "payload": {
+        "kind": "resp",
+        "reqId": "pingKey_29299",
+        "code": 200,
+        "body": {
+          "currentTime": 1782961602058
+        },
+        "type": "GetClockResponse"
+      }
+    }
+  ]
+}
