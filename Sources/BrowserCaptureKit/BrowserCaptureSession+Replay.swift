@@ -83,7 +83,14 @@ extension BrowserCaptureSession {
         }
 
         var outcome = await replayStampedFrame(payload, inFrame: nil)
-        if outcome == .noSocket, let childFrame = latestChildFrame {
+        // Child-frame fallback is origin-gated: `latestChildFrame` is merely the most
+        // recently seen non-main frame, so without the check a reply could be handed to
+        // an unrelated iframe's socket (analytics/ads) and still report `.sent`.
+        if outcome == .noSocket,
+            let childFrame = latestChildFrame,
+            let socketOrigin = latestWebSocketOrigin,
+            ScriptMessageBridge.originString(from: childFrame.securityOrigin) == socketOrigin
+        {
             outcome = await replayStampedFrame(payload, inFrame: childFrame)
         }
 

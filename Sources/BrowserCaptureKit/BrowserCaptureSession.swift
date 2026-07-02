@@ -80,6 +80,13 @@ public final class BrowserCaptureSession: NSObject {
         bridge.lastChildFrame
     }
 
+    /// Security origin of the frame that most recently carried WebSocket traffic,
+    /// recorded from the capture hook's socket events. Constrains which child frame
+    /// a WebSocket replay may fall back to.
+    var latestWebSocketOrigin: String? {
+        bridge.lastWebSocketSecurityOrigin
+    }
+
     /// Evaluate JavaScript in a specific frame (defaults to the latest child
     /// frame). This is how native code reaches into a cross-origin child iframe:
     /// the injected in-frame script is same-origin with the child document, so

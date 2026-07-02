@@ -11,6 +11,11 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
     /// at the child frame that originated the traffic.
     private(set) var lastChildFrame: WKFrameInfo?
 
+    /// Security origin of the frame that most recently carried WebSocket traffic.
+    /// Replay uses this to reject a `lastChildFrame` fallback whose origin does not
+    /// match — an unrelated iframe (analytics/ads) must never receive the reply.
+    private(set) var lastWebSocketSecurityOrigin: String?
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else {
             onEvent?(.scriptError(BrowserScriptError(message: "Received non-object script message.")))
@@ -42,21 +47,21 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
     }
 
     private func capturedFrame(from frameInfo: WKFrameInfo) -> CapturedFrameInfo {
-        let origin = frameInfo.securityOrigin
-        let originString: String?
-        if origin.protocol.isEmpty && origin.host.isEmpty {
-            originString = nil
-        } else if origin.port == 0 {
-            originString = "\(origin.protocol)://\(origin.host)"
-        } else {
-            originString = "\(origin.protocol)://\(origin.host):\(origin.port)"
-        }
-
-        return CapturedFrameInfo(
+        CapturedFrameInfo(
             isMainFrame: frameInfo.isMainFrame,
-            securityOrigin: originString,
+            securityOrigin: Self.originString(from: frameInfo.securityOrigin),
             requestURL: frameInfo.request.url?.absoluteString
         )
+    }
+
+    static func originString(from origin: WKSecurityOrigin) -> String? {
+        if origin.protocol.isEmpty && origin.host.isEmpty {
+            return nil
+        }
+        if origin.port == 0 {
+            return "\(origin.protocol)://\(origin.host)"
+        }
+        return "\(origin.protocol)://\(origin.host):\(origin.port)"
     }
 
     private func handleResponse(body: [String: Any], frame: CapturedFrameInfo, capturedAt: Date) {
@@ -100,6 +105,10 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
         else {
             onEvent?(.scriptError(BrowserScriptError(capturedAt: capturedAt, message: "Received malformed socket event.")))
             return
+        }
+
+        if source == .websocket {
+            lastWebSocketSecurityOrigin = frame.securityOrigin
         }
 
         let direction = string(body["direction"]).flatMap(CapturedResponse.Direction.init(rawValue:))

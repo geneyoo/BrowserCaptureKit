@@ -6,6 +6,10 @@ import Foundation
 /// has no dependency on the app's JSON type.
 public enum BrowserJSONValue: Codable, Equatable, Sendable {
     case string(String)
+    /// Integral JSON numbers. Decoded before `.number` so 64-bit ids (epoch-nanosecond
+    /// timestamps, snowflake ids) survive the round trip — routing them through Double
+    /// corrupts anything above 2^53.
+    case integer(Int64)
     case number(Double)
     case bool(Bool)
     case object([String: BrowserJSONValue])
@@ -18,6 +22,8 @@ public enum BrowserJSONValue: Codable, Equatable, Sendable {
             self = .null
         } else if let value = try? container.decode(Bool.self) {
             self = .bool(value)
+        } else if let value = try? container.decode(Int64.self) {
+            self = .integer(value)
         } else if let value = try? container.decode(Double.self) {
             self = .number(value)
         } else if let value = try? container.decode(String.self) {
@@ -33,6 +39,8 @@ public enum BrowserJSONValue: Codable, Equatable, Sendable {
         var container = encoder.singleValueContainer()
         switch self {
         case .string(let value):
+            try container.encode(value)
+        case .integer(let value):
             try container.encode(value)
         case .number(let value):
             try container.encode(value)
