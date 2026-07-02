@@ -16,6 +16,10 @@ let package = Package(
     targets: [
         .target(
             name: "BrowserCaptureKit"
+        ),
+        .testTarget(
+            name: "BrowserCaptureKitTests",
+            dependencies: ["BrowserCaptureKit"]
         )
     ]
 )
