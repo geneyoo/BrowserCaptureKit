@@ -593,10 +593,40 @@ extension BrowserCaptureSession {
         return result
     }
 
+    /// The `pageEpoch` a target was captured against, if it is snapshot-bound.
+    /// `nil` for label-only / epoch-less targets (never stale-rejected).
+    private func targetPageEpoch(for action: BrowserActionRequest) -> Int? {
+        switch action {
+        case .tap(let target), .clear(let target):
+            return target.pageEpoch
+        case .fill(let target, _, _):
+            return target.pageEpoch
+        case .pressEnter(let target), .swipe(let target, _):
+            return target?.pageEpoch
+        case .waitFor(.element(let target)):
+            return target.pageEpoch
+        default:
+            return nil
+        }
+    }
+
     private func perform(
         _ action: BrowserActionRequest,
         context: BrowserActionExecutionContext
     ) async -> BrowserActionResult {
+        // Stale-epoch rejection (WS-TGT): a target captured against an earlier
+        // page (navigation/reload bumped pageEpoch) must not act on the new DOM.
+        if let targetEpoch = targetPageEpoch(for: action), targetEpoch != pageEpoch {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: action.kind,
+                status: .staleSnapshot,
+                message: "Rejected: target pageEpoch \(targetEpoch) != current \(pageEpoch) (page changed since capture).",
+                urlBefore: context.urlBefore,
+                urlAfter: webView?.url
+            )
+        }
+
         switch action {
         case .observe(let reason):
             return await performObserve(reason: reason, context: context)
