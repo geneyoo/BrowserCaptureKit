@@ -13,6 +13,12 @@ public enum BrowserActionKind: String, Codable, Equatable, Sendable {
     case forward
     case reload
     case waitFor
+    /// Vendor WebSocket API-replay: re-issue the widget's own protocol frame over its live
+    /// socket (docs/copilot-capture-adapters.md §5).
+    case wsReplay
+    /// In-house REST re-issue: re-POST the page's own send endpoint from inside the
+    /// authenticated WebView.
+    case restReissue
 }
 
 public enum BrowserActionStatus: String, Codable, Equatable, Sendable {
@@ -97,6 +103,12 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
     case forward
     case reload
     case waitFor(BrowserWaitCondition)
+    /// Vendor WebSocket API-replay. `frame` is the redacted protocol body the server
+    /// reconstructed; the executor stamps a fresh per-socket request id at inject time.
+    case wsReplay(frame: BrowserJSONValue, note: String)
+    /// In-house REST re-issue. Templated send endpoint the client re-POSTs with the
+    /// WebView's own credentials.
+    case restReissue(method: String, urlTemplate: String, body: BrowserJSONValue)
 
     public var kind: BrowserActionKind {
         switch self {
@@ -124,6 +136,10 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
             return .reload
         case .waitFor:
             return .waitFor
+        case .wsReplay:
+            return .wsReplay
+        case .restReissue:
+            return .restReissue
         }
     }
 
@@ -138,6 +154,11 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
         case direction
         case url
         case condition
+        case frame
+        case note
+        case method
+        case urlTemplate
+        case body
     }
 
     public init(from decoder: Decoder) throws {
@@ -178,6 +199,17 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
             self = .reload
         case .waitFor:
             self = .waitFor(try container.decode(BrowserWaitCondition.self, forKey: .condition))
+        case .wsReplay:
+            self = .wsReplay(
+                frame: try container.decode(BrowserJSONValue.self, forKey: .frame),
+                note: try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+            )
+        case .restReissue:
+            self = .restReissue(
+                method: try container.decodeIfPresent(String.self, forKey: .method) ?? "POST",
+                urlTemplate: try container.decode(String.self, forKey: .urlTemplate),
+                body: try container.decodeIfPresent(BrowserJSONValue.self, forKey: .body) ?? .null
+            )
         }
     }
 
@@ -209,6 +241,13 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
             break
         case .waitFor(let condition):
             try container.encode(condition, forKey: .condition)
+        case .wsReplay(let frame, let note):
+            try container.encode(frame, forKey: .frame)
+            try container.encode(note, forKey: .note)
+        case .restReissue(let method, let urlTemplate, let body):
+            try container.encode(method, forKey: .method)
+            try container.encode(urlTemplate, forKey: .urlTemplate)
+            try container.encode(body, forKey: .body)
         }
     }
 }

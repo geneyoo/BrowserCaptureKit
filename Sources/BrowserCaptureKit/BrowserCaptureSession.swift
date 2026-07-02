@@ -665,6 +665,10 @@ extension BrowserCaptureSession {
             return navigationResult(context: context, kind: .reload, message: "Requested browser reload.")
         case .waitFor(let condition):
             return await performImmediateWait(context: context, condition: condition)
+        case .wsReplay(let frame, let note):
+            return await performWebSocketReplay(frame: frame, note: note, context: context)
+        case .restReissue(let method, let urlTemplate, let body):
+            return await performRestReissue(method: method, urlTemplate: urlTemplate, body: body, context: context)
         }
     }
 
@@ -934,7 +938,7 @@ private struct BrowserAccessibilityPageState {
     var error: String?
 }
 
-private struct BrowserActionExecutionContext {
+struct BrowserActionExecutionContext {
     let requestID: UUID
     let responseCountBefore: Int
     let urlBefore: URL?
