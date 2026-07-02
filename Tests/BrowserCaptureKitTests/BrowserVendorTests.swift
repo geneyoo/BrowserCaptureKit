@@ -9,6 +9,12 @@ final class BrowserVendorTests: XCTestCase {
         XCTAssertEqual(BrowserVendor(origin: "liveperson.com"), .livePerson)
     }
 
+    func testWebSocketSchemeAndDeltaMainFrameCase() {
+        // Real Delta opens the LivePerson socket from its own main frame, so the
+        // vendor must be recoverable from the wss:// destination host itself.
+        XCTAssertEqual(BrowserVendor(origin: "wss://va2.msg.liveperson.net/ws_api/account/29060121/messaging/consumer"), .livePerson)
+    }
+
     func testOtherKnownVendors() {
         XCTAssertEqual(BrowserVendor(origin: "https://widget.zopim.com"), .zendesk)
         XCTAssertEqual(BrowserVendor(origin: "https://foo.zendesk.com"), .zendesk)

@@ -67,6 +67,15 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
     public let durationMilliseconds: Double?
     public let errorDescription: String?
 
+    /// Resolved vendor for THIS event — the frozen envelope's `vendorHint`.
+    /// Keys off the traffic **destination host first**: a widget socket is often
+    /// opened from the brand's own main frame (real Delta opens the LivePerson
+    /// socket from `delta.com`, not a `liveperson.net` iframe), so the frame
+    /// origin alone misses it. Falls back to the frame origin's vendor.
+    public var vendorHint: BrowserVendor? {
+        BrowserVendor(origin: url.absoluteString) ?? frame?.vendorHint
+    }
+
     public init(
         id: UUID = UUID(),
         capturedAt: Date = Date(),
