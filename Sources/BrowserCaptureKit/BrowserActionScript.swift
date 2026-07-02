@@ -327,7 +327,9 @@ enum BrowserActionScript {
 
           function scoreElement(element, index) {
             const summary = candidateSummary(element, index, 0);
-            const wantedStableID = compact(target?.snapshotElementID || "");
+            // Canonical stableID is the primary key (contract v1). Fall back to the
+            // ephemeral snapshotElementID only for pre-canonical targets.
+            const wantedStableID = compact(target?.stableID || target?.snapshotElementID || "");
             const wantedPath = compact(target?.path || "");
             const wantedFingerprint = compact(target?.selectorFingerprint || "");
             const wantedRole = normalized(target?.role || "");
