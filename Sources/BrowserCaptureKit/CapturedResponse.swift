@@ -11,11 +11,21 @@ public struct CapturedFrameInfo: Equatable, Sendable {
     public let securityOrigin: String?
     /// `WKFrameInfo.request.url` when available.
     public let requestURL: String?
+    /// Deterministic CS-widget vendor for this frame, inferred from
+    /// `securityOrigin` (falling back to the request URL host). `nil` = unknown
+    /// origin — the frozen envelope's `vendorHint`.
+    public let vendorHint: BrowserVendor?
 
-    public init(isMainFrame: Bool, securityOrigin: String? = nil, requestURL: String? = nil) {
+    public init(
+        isMainFrame: Bool,
+        securityOrigin: String? = nil,
+        requestURL: String? = nil,
+        vendorHint: BrowserVendor? = nil
+    ) {
         self.isMainFrame = isMainFrame
         self.securityOrigin = securityOrigin
         self.requestURL = requestURL
+        self.vendorHint = vendorHint ?? BrowserVendor(origin: securityOrigin) ?? BrowserVendor(origin: requestURL)
     }
 }
 
@@ -56,6 +66,15 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
     public let responseBodyTruncated: Bool
     public let durationMilliseconds: Double?
     public let errorDescription: String?
+
+    /// Resolved vendor for THIS event — the frozen envelope's `vendorHint`.
+    /// Keys off the traffic **destination host first**: a widget socket is often
+    /// opened from the brand's own main frame (real Delta opens the LivePerson
+    /// socket from `delta.com`, not a `liveperson.net` iframe), so the frame
+    /// origin alone misses it. Falls back to the frame origin's vendor.
+    public var vendorHint: BrowserVendor? {
+        BrowserVendor(origin: url.absoluteString) ?? frame?.vendorHint
+    }
 
     public init(
         id: UUID = UUID(),

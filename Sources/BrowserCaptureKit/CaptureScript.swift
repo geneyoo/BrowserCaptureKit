@@ -509,6 +509,15 @@ enum CaptureScript {
                         : new OriginalWebSocket(url, protocols);
                       const resolvedURL = coerceURL(url);
 
+                      // Stash the live socket so native code can API-replay a
+                      // captured protocol frame over the widget's own socket
+                      // (the reliable send path — synthetic UI clicks are
+                      // isTrusted-rejected). Per-frame (window is frame-scoped).
+                      try {
+                        (window.__bckSockets = window.__bckSockets || []).push(socket);
+                        window.__bckLastSocket = socket;
+                      } catch (_) {}
+
                       post({
                         kind: "socket",
                         source: "websocket",

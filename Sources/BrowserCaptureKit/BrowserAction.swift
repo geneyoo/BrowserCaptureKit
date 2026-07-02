@@ -42,6 +42,11 @@ public enum BrowserSwipeDirection: String, Codable, Equatable, Sendable {
 public struct BrowserElementTarget: Codable, Equatable, Sendable {
     public let snapshotID: UUID?
     public let pageEpoch: Int?
+    /// Canonical element identity (`stableID` contract v1): `"<index>:<fingerprint>"`
+    /// computed over the shared traversal. The primary, highest-weight match key.
+    public let stableID: String?
+    /// Ephemeral per-snapshot element UUID. Lower-weight fallback only — do NOT
+    /// overload with the canonical `stableID`.
     public let snapshotElementID: String?
     public let path: String?
     public let selectorFingerprint: String?
@@ -53,6 +58,7 @@ public struct BrowserElementTarget: Codable, Equatable, Sendable {
     public init(
         snapshotID: UUID? = nil,
         pageEpoch: Int? = nil,
+        stableID: String? = nil,
         snapshotElementID: String? = nil,
         path: String? = nil,
         selectorFingerprint: String? = nil,
@@ -63,6 +69,7 @@ public struct BrowserElementTarget: Codable, Equatable, Sendable {
     ) {
         self.snapshotID = snapshotID
         self.pageEpoch = pageEpoch
+        self.stableID = stableID
         self.snapshotElementID = snapshotElementID
         self.path = path
         self.selectorFingerprint = selectorFingerprint
