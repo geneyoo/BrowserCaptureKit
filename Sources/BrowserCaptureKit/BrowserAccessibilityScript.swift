@@ -1,8 +1,13 @@
 import Foundation
 
 enum BrowserAccessibilityScript {
-    static let source = """
+    /// Shared traversal module (`__bck`) is prepended so capture and action derive
+    /// element identity identically (stableID contract v1).
+    static var source: String { BrowserTraversalScript.shared + "\n" + body }
+
+    private static let body = """
         (() => {
+          const __walk = window.__bck.begin();
           const maxElements = 1200;
           const maxTextLength = 280;
 
@@ -310,12 +315,13 @@ enum BrowserAccessibilityScript {
               continue;
             }
 
-            const path = pathFor(element);
-            const selectorFingerprint = selectorFingerprintFor(element, role, label.label, path, rect);
+            const __d = __walk.describe(element);
+            const path = __d.path;
+            const selectorFingerprint = __d.fingerprint;
 
             elements.push({
-              stableID: stableIDFor(seenVisible - 1, selectorFingerprint),
-              index: seenVisible - 1,
+              stableID: __d.stableID,
+              index: __d.index,
               tagName,
               role,
               label: label.label,
