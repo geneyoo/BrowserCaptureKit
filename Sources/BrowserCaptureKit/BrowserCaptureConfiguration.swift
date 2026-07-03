@@ -1,12 +1,7 @@
 import Foundation
 
 public struct BrowserCaptureConfiguration: Equatable, Sendable {
-    public static let defaultInitialURL: URL = {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "www.instagram.com"
-        return components.url ?? URL(fileURLWithPath: "/")
-    }()
+    public static let defaultInitialURL: URL = URL(string: "about:blank") ?? URL(fileURLWithPath: "/")
 
     public static let defaultPersistentStoreIdentifier = UUID(uuidString: "B2D41C04-19E7-4FA5-986A-F6D3B9115E5D") ?? UUID()
 
