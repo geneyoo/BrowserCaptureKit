@@ -36,11 +36,10 @@ public enum BrowserVendor: String, Equatable, Sendable, CaseIterable {
         guard let host = BrowserVendor.host(from: origin), !host.isEmpty else {
             return nil
         }
-        for (vendor, suffixes) in BrowserVendor.originSuffixes {
-            if suffixes.contains(where: { BrowserVendor.host(host, matchesSuffix: $0) }) {
-                self = vendor
-                return
-            }
+        for (vendor, suffixes) in BrowserVendor.originSuffixes
+        where suffixes.contains(where: { BrowserVendor.host(host, matchesSuffix: $0) }) {
+            self = vendor
+            return
         }
         return nil
     }
