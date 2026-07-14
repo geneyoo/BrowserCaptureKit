@@ -33,6 +33,48 @@ final class BrowserQuietWaitTests: XCTestCase {
         XCTAssertTrue(body.contains(#"activitySeen ? "activity" : "quiet""#))
     }
 
+    func testFunctionBodySupportsNativeCancelBroadcast() {
+        let body = BrowserQuietWaitScript.functionBody
+
+        // Multi-frame race: losing frames are stood down via an in-page event so
+        // their promises resolve immediately instead of waiting out the deadline.
+        XCTAssertTrue(body.contains(#"window.addEventListener("__bckQuietWaitCancel", cancelListener)"#))
+        XCTAssertTrue(body.contains(#"window.removeEventListener("__bckQuietWaitCancel", cancelListener)"#))
+        XCTAssertTrue(body.contains(#"finish("cancelled")"#))
+        XCTAssertTrue(
+            BrowserQuietWaitScript.cancelBroadcastSource.contains(
+                #"window.dispatchEvent(new Event("__bckQuietWaitCancel"))"#
+            )
+        )
+    }
+
+    func testActivityMessageAttributesChildFrameByOriginOnly() {
+        // Main-frame activity keeps the historical wording…
+        XCTAssertEqual(
+            BrowserQuietWaitScript.activityMessage(frameOrigin: nil, elapsedMilliseconds: 812),
+            "New activity detected after 812ms."
+        )
+        XCTAssertEqual(
+            BrowserQuietWaitScript.activityMessage(frameOrigin: nil, elapsedMilliseconds: nil),
+            "New activity detected."
+        )
+        // …child-frame activity names the frame by origin only (no element detail).
+        XCTAssertEqual(
+            BrowserQuietWaitScript.activityMessage(
+                frameOrigin: "https://widget.lpsnmedia.net",
+                elapsedMilliseconds: 812
+            ),
+            "New activity detected in frame https://widget.lpsnmedia.net after 812ms."
+        )
+    }
+
+    func testQuietMessageKeepsHistoricalWording() {
+        XCTAssertEqual(
+            BrowserQuietWaitScript.quietMessage(milliseconds: 30000),
+            "No new activity within 30000ms."
+        )
+    }
+
     func testArgumentsCarryQuietWindowAndSettleDebounce() {
         let arguments = BrowserQuietWaitScript.arguments(quietMilliseconds: 30000)
 
@@ -60,6 +102,15 @@ final class BrowserQuietWaitTests: XCTestCase {
 
         XCTAssertEqual(outcome?.kind, .quiet)
         XCTAssertEqual(outcome?.elapsedMilliseconds, 30000)
+    }
+
+    func testOutcomeDecodesCancelledPayload() {
+        let outcome = BrowserQuietWaitOutcome(
+            scriptResult: ["outcome": "cancelled", "elapsedMs": 5]
+        )
+
+        XCTAssertEqual(outcome?.kind, .cancelled)
+        XCTAssertEqual(outcome?.elapsedMilliseconds, 5)
     }
 
     func testOutcomeToleratesMissingElapsed() {

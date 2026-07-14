@@ -16,6 +16,21 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
     /// match — an unrelated iframe (analytics/ads) must never receive the reply.
     private(set) var lastWebSocketSecurityOrigin: String?
 
+    /// Every non-main frame the capture script has spoken from, keyed by security
+    /// origin. The capture script is injected `forMainFrameOnly: false` and posts an
+    /// install message at document start, so every scriptable frame registers here
+    /// as soon as its document loads — this is how the session enumerates child
+    /// frames for cross-frame snapshots, actuation, and quiet waits. Latest
+    /// `WKFrameInfo` per origin wins, so a re-navigated widget iframe refreshes its
+    /// handle. Two same-origin sibling iframes collapse to one entry (best effort;
+    /// the money-target chat widgets are all cross-origin).
+    private(set) var childFramesByOrigin: [String: WKFrameInfo] = [:]
+
+    /// Called on main-frame navigation: the old page's child frames are gone.
+    func clearChildFrames() {
+        childFramesByOrigin = [:]
+    }
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else {
             onEvent?(.scriptError(BrowserScriptError(message: "Received non-object script message.")))
@@ -25,6 +40,9 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
         let wkFrame = message.frameInfo
         if !wkFrame.isMainFrame {
             lastChildFrame = wkFrame
+            if let origin = Self.originString(from: wkFrame.securityOrigin) {
+                childFramesByOrigin[origin] = wkFrame
+            }
         }
         let frame = capturedFrame(from: wkFrame)
 

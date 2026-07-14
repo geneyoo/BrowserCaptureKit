@@ -30,6 +30,13 @@ public final class BrowserCaptureSession: NSObject {
     private(set) var pageEpoch = 0
     private var capturedResponseCount = 0
 
+    /// pageEpoch-scoped elementID→frame map (see `BrowserCaptureSession+Frames`):
+    /// the namespace prefix on a child-frame element ID resolves to the owning
+    /// frame here. Cleared on every epoch bump, exactly like element IDs.
+    var childFrameRoutes: [String: BrowserChildFrameRoute] = [:]
+    var childFrameNamespaceByOrigin: [String: String] = [:]
+    var nextChildFrameOrdinal = 1
+
     public init(configuration: BrowserCaptureConfiguration = BrowserCaptureConfiguration()) {
         self.configuration = configuration
         super.init()
@@ -85,6 +92,17 @@ public final class BrowserCaptureSession: NSObject {
     /// a WebSocket replay may fall back to.
     var latestWebSocketOrigin: String? {
         bridge.lastWebSocketSecurityOrigin
+    }
+
+    /// All child frames the bridge has heard from this page, keyed by origin.
+    /// Populated at document start (the capture script posts an install message
+    /// from every frame), so widget iframes are known before they emit traffic.
+    var childFramesByOrigin: [String: WKFrameInfo] {
+        bridge.childFramesByOrigin
+    }
+
+    func clearChildFrameRegistry() {
+        bridge.clearChildFrames()
     }
 
     /// Evaluate JavaScript in a specific frame (defaults to the latest child
@@ -217,7 +235,7 @@ public final class BrowserCaptureSession: NSObject {
             )
         }
 
-        let state = await accessibilityState(from: webView)
+        let state = await mergedAccessibilityState(from: webView)
         return BrowserAccessibilitySnapshot(
             reason: reason,
             pageEpoch: pageEpoch,
@@ -361,9 +379,16 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
-    private func accessibilityState(from webView: WKWebView) async -> BrowserAccessibilityPageState {
+    /// One frame's accessibility capture. `frame == nil` targets the main frame;
+    /// a child `WKFrameInfo` evaluates in that frame's `.page` world, where the
+    /// script is same-origin with the widget document.
+    func accessibilityState(from webView: WKWebView, frame: WKFrameInfo?) async -> BrowserAccessibilityPageState {
         do {
-            let result = try await webView.evaluateJavaScript(BrowserAccessibilityScript.source)
+            let result = try await webView.evaluateJavaScript(
+                BrowserAccessibilityScript.source,
+                in: frame,
+                contentWorld: .page
+            )
             guard let payload = result as? [String: Any] else {
                 return BrowserAccessibilityPageState(error: "Accessibility script returned a non-object result.")
             }
@@ -392,155 +417,6 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
-    private func accessibilityElement(from payload: [String: Any]) -> BrowserAccessibilityElementSnapshot? {
-        guard let index = int(payload["index"]),
-            let tagName = string(payload["tagName"])
-        else {
-            return nil
-        }
-
-        let boundsPayload = payload["bounds"] as? [String: Any]
-        let bounds = BrowserElementBounds(
-            x: double(boundsPayload?["x"]) ?? 0,
-            y: double(boundsPayload?["y"]) ?? 0,
-            width: double(boundsPayload?["width"]) ?? 0,
-            height: double(boundsPayload?["height"]) ?? 0
-        )
-
-        return BrowserAccessibilityElementSnapshot(
-            stableID: string(payload["stableID"]),
-            index: index,
-            tagName: tagName,
-            role: string(payload["role"]),
-            label: string(payload["label"]),
-            labelSource: string(payload["labelSource"]),
-            text: string(payload["text"]),
-            value: string(payload["value"]),
-            placeholder: string(payload["placeholder"]),
-            href: string(payload["href"]),
-            source: string(payload["source"]),
-            inputType: string(payload["inputType"]),
-            isVisible: bool(payload["isVisible"]) ?? false,
-            isInteractive: bool(payload["isInteractive"]) ?? false,
-            isDisabled: bool(payload["isDisabled"]) ?? false,
-            isEditable: bool(payload["isEditable"]) ?? false,
-            isObscuredAtCenter: bool(payload["isObscuredAtCenter"]) ?? false,
-            ariaHidden: bool(payload["ariaHidden"]) ?? false,
-            bounds: bounds,
-            path: string(payload["path"]) ?? "",
-            selectorFingerprint: string(payload["selectorFingerprint"]),
-            supportedActions: (payload["supportedActions"] as? [String] ?? [])
-                .compactMap(BrowserActionKind.init(rawValue:))
-        )
-    }
-
-    private func resolvedElement(from value: Any?) -> BrowserResolvedElement? {
-        guard let payload = value as? [String: Any] else {
-            return nil
-        }
-
-        let bounds: BrowserElementBounds?
-        if let boundsPayload = payload["bounds"] as? [String: Any] {
-            bounds = BrowserElementBounds(
-                x: double(boundsPayload["x"]) ?? 0,
-                y: double(boundsPayload["y"]) ?? 0,
-                width: double(boundsPayload["width"]) ?? 0,
-                height: double(boundsPayload["height"]) ?? 0
-            )
-        } else {
-            bounds = nil
-        }
-
-        return BrowserResolvedElement(
-            score: double(payload["score"]) ?? 0,
-            index: int(payload["index"]),
-            tagName: string(payload["tagName"]),
-            role: string(payload["role"]),
-            label: string(payload["label"]),
-            text: string(payload["text"]),
-            path: string(payload["path"]),
-            selectorFingerprint: string(payload["selectorFingerprint"]),
-            bounds: bounds,
-            isVisible: bool(payload["isVisible"]) ?? false,
-            isInteractive: bool(payload["isInteractive"]) ?? false,
-            isDisabled: bool(payload["isDisabled"]) ?? false,
-            isEditable: bool(payload["isEditable"]) ?? false,
-            isObscuredAtCenter: bool(payload["isObscuredAtCenter"]) ?? false
-        )
-    }
-
-    private func stringDictionary(from value: Any?) -> [String: String] {
-        guard let dictionary = value as? [String: Any] else {
-            return [:]
-        }
-
-        return dictionary.reduce(into: [:]) { result, entry in
-            guard !(entry.value is NSNull) else {
-                return
-            }
-            if let value = entry.value as? String {
-                result[entry.key] = value
-            } else {
-                result[entry.key] = String(describing: entry.value)
-            }
-        }
-    }
-
-    private func string(_ value: Any?) -> String? {
-        guard let value, !(value is NSNull) else {
-            return nil
-        }
-        if let value = value as? String {
-            return value.isEmpty ? nil : value
-        }
-        return String(describing: value)
-    }
-
-    private func int(_ value: Any?) -> Int? {
-        guard let value, !(value is NSNull) else {
-            return nil
-        }
-        if let value = value as? Int {
-            return value
-        }
-        if let value = value as? Double {
-            return Int(value)
-        }
-        if let value = value as? NSNumber {
-            return value.intValue
-        }
-        return nil
-    }
-
-    private func double(_ value: Any?) -> Double? {
-        guard let value, !(value is NSNull) else {
-            return nil
-        }
-        if let value = value as? Double {
-            return value
-        }
-        if let value = value as? Int {
-            return Double(value)
-        }
-        if let value = value as? NSNumber {
-            return value.doubleValue
-        }
-        return nil
-    }
-
-    private func bool(_ value: Any?) -> Bool? {
-        guard let value, !(value is NSNull) else {
-            return nil
-        }
-        if let value = value as? Bool {
-            return value
-        }
-        if let value = value as? NSNumber {
-            return value.boolValue
-        }
-        return nil
-    }
-
     func emitPageEvent(kind: BrowserPageEvent.Kind, webView: WKWebView?, message: String? = nil) {
         emit(
             .page(
@@ -559,6 +435,9 @@ public final class BrowserCaptureSession: NSObject {
         case .page(let event):
             if event.kind == .navigationStarted {
                 pageEpoch += 1
+                // The new page's child frames are unknown; a stale route must
+                // never actuate into the wrong document.
+                invalidateChildFrameRoutes()
             }
         case .response, .nativeNetwork:
             capturedResponseCount += 1
@@ -638,22 +517,27 @@ extension BrowserCaptureSession {
         case .observe(let reason):
             return await performObserve(reason: reason, context: context)
         case .tap(let target):
-            return await performScriptedAction(context: context, kind: .tap, source: BrowserActionScript.tapSource(target: target))
+            return await performRoutedScriptedAction(context: context, kind: .tap, target: target) {
+                BrowserActionScript.tapSource(target: $0 ?? target)
+            }
         case .fill(let target, let text, let submit):
-            return await performScriptedAction(
+            return await performRoutedScriptedAction(
                 context: context,
                 kind: .fill,
-                source: BrowserActionScript.fillSource(target: target, text: text, submit: submit),
+                target: target,
                 redactionWarnings: ["Filled text is redacted from action traces."]
-            )
+            ) {
+                BrowserActionScript.fillSource(target: $0 ?? target, text: text, submit: submit)
+            }
         case .clear(let target):
-            return await performScriptedAction(context: context, kind: .clear, source: BrowserActionScript.clearSource(target: target))
+            return await performRoutedScriptedAction(context: context, kind: .clear, target: target) {
+                BrowserActionScript.clearSource(target: $0 ?? target)
+            }
         case .pressEnter(let target):
-            return await performScriptedAction(
-                context: context,
-                kind: .pressEnter,
-                source: BrowserActionScript.pressEnterSource(target: target)
-            )
+            // Targetless pressEnter (no element ID) stays main-frame by contract.
+            return await performRoutedScriptedAction(context: context, kind: .pressEnter, target: target) {
+                BrowserActionScript.pressEnterSource(target: $0)
+            }
         case .scroll(let deltaX, let deltaY):
             return await performScroll(context: context, deltaX: deltaX, deltaY: deltaY)
         case .swipe(let target, let direction):
@@ -711,10 +595,13 @@ extension BrowserCaptureSession {
         )
     }
 
-    private func performScriptedAction(
+    /// `frame == nil` evaluates in the main frame; a child frame is targeted via
+    /// the routing map (`performRoutedScriptedAction`).
+    func performScriptedAction(
         context: BrowserActionExecutionContext,
         kind: BrowserActionKind,
         source: String,
+        frame: WKFrameInfo? = nil,
         redactionWarnings: [String] = []
     ) async -> BrowserActionResult {
         guard let webView else {
@@ -729,7 +616,7 @@ extension BrowserCaptureSession {
         }
 
         do {
-            let result = try await webView.evaluateJavaScript(source)
+            let result = try await webView.evaluateJavaScript(source, in: frame, contentWorld: .page)
             guard let payload = result as? [String: Any] else {
                 return BrowserActionResult(
                     requestID: context.requestID,
@@ -862,11 +749,9 @@ extension BrowserCaptureSession {
                 networkEventCountDelta: networkDelta(since: context)
             )
         case .element(let target):
-            return await performScriptedAction(
-                context: context,
-                kind: .waitFor,
-                source: BrowserActionScript.waitForElementSource(target: target)
-            )
+            return await performRoutedScriptedAction(context: context, kind: .waitFor, target: target) {
+                BrowserActionScript.waitForElementSource(target: $0 ?? target)
+            }
         case .quiet(let milliseconds):
             return await performQuietWait(context: context, milliseconds: milliseconds)
         }
@@ -924,7 +809,7 @@ private struct BrowserPageState {
     var error: String?
 }
 
-private struct BrowserAccessibilityPageState {
+struct BrowserAccessibilityPageState {
     var scrollX: Double?
     var scrollY: Double?
     var viewportOffsetX: Double?
