@@ -27,7 +27,7 @@ public final class BrowserCaptureSession: NSObject {
 
     private let messageHandlerName = "browserCapture"
     private let bridge = ScriptMessageBridge()
-    private var pageEpoch = 0
+    private(set) var pageEpoch = 0
     private var capturedResponseCount = 0
 
     public init(configuration: BrowserCaptureConfiguration = BrowserCaptureConfiguration()) {
@@ -671,7 +671,7 @@ extension BrowserCaptureSession {
             reload()
             return navigationResult(context: context, kind: .reload, message: "Requested browser reload.")
         case .waitFor(let condition):
-            return await performImmediateWait(context: context, condition: condition)
+            return await performWait(context: context, condition: condition)
         case .wsReplay(let frame, let note):
             return await performWebSocketReplay(frame: frame, note: note, context: context)
         case .restReissue(let method, let urlTemplate, let body):
@@ -842,7 +842,9 @@ extension BrowserCaptureSession {
         }
     }
 
-    private func performImmediateWait(
+    /// `.urlContains` / `.element` stay instantaneous checks; `.quiet` is a
+    /// genuine wait (see ``performQuietWait(context:milliseconds:)``).
+    private func performWait(
         context: BrowserActionExecutionContext,
         condition: BrowserWaitCondition
     ) async -> BrowserActionResult {
@@ -865,16 +867,8 @@ extension BrowserCaptureSession {
                 kind: .waitFor,
                 source: BrowserActionScript.waitForElementSource(target: target)
             )
-        case .quiet:
-            return BrowserActionResult(
-                requestID: context.requestID,
-                kind: .waitFor,
-                status: .unsupported,
-                message: "Quiet wait needs mutation/network-backed waiting and is not implemented yet.",
-                urlBefore: context.urlBefore,
-                urlAfter: webView?.url,
-                networkEventCountDelta: networkDelta(since: context)
-            )
+        case .quiet(let milliseconds):
+            return await performQuietWait(context: context, milliseconds: milliseconds)
         }
     }
 
@@ -916,7 +910,7 @@ extension BrowserCaptureSession {
         )
     }
 
-    private func networkDelta(since context: BrowserActionExecutionContext) -> Int {
+    func networkDelta(since context: BrowserActionExecutionContext) -> Int {
         capturedResponseCount - context.responseCountBefore
     }
 
