@@ -3,6 +3,8 @@ import WebKit
 
 @MainActor
 final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
+    private let expectedBridgeToken: String
+
     var onEvent: ((BrowserCaptureEvent) -> Void)?
     var onViewportChanged: ((String?) -> Void)?
 
@@ -26,14 +28,24 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
     /// the money-target chat widgets are all cross-origin).
     private(set) var childFramesByOrigin: [String: WKFrameInfo] = [:]
 
+    init(expectedBridgeToken: String) {
+        self.expectedBridgeToken = expectedBridgeToken
+        super.init()
+    }
+
     /// Called on main-frame navigation: the old page's child frames are gone.
     func clearChildFrames() {
         childFramesByOrigin = [:]
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard let body = message.body as? [String: Any] else {
-            onEvent?(.scriptError(BrowserScriptError(message: "Received non-object script message.")))
+        guard
+            let body = message.body as? [String: Any],
+            Self.hasValidBridgeToken(body, expected: expectedBridgeToken)
+        else {
+            // The page world can see the WK message-handler name and can call it
+            // directly. Unauthenticated posts are merchant-page input, not capture
+            // evidence, so reject them silently before updating any frame registry.
             return
         }
 
@@ -62,6 +74,13 @@ final class ScriptMessageBridge: NSObject, WKScriptMessageHandler {
         default:
             onEvent?(.scriptError(BrowserScriptError(capturedAt: capturedAt, message: "Received unknown script message kind.")))
         }
+    }
+
+    static func hasValidBridgeToken(_ body: [String: Any], expected: String) -> Bool {
+        guard !expected.isEmpty, let presented = body["bridgeToken"] as? String else {
+            return false
+        }
+        return presented == expected
     }
 
     private func capturedFrame(from frameInfo: WKFrameInfo) -> CapturedFrameInfo {

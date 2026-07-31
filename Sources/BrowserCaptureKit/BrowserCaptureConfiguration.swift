@@ -20,6 +20,14 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
     public var capturesWebSocket: Bool
     public var capturesConsole: Bool
     public var maxBodyPreviewCharacters: Int
+    /// Hard boundary for a transport replay to receive its vendor-correlated
+    /// acknowledgement. Expiry is ambiguous and must enter recovery; it is
+    /// never treated as proof that the merchant did not receive the send.
+    public var webSocketAckTimeoutMilliseconds: Int
+    /// Once the in-page POST begins, timeout/network loss cannot prove whether
+    /// the merchant accepted it. Bound the wait, then report an uncertain
+    /// outcome instead of treating the request as safely retryable.
+    public var restReissueAckTimeoutMilliseconds: Int
 
     public init(
         initialURL: URL = BrowserCaptureConfiguration.defaultInitialURL,
@@ -28,7 +36,9 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
         capturesXHR: Bool = true,
         capturesWebSocket: Bool = true,
         capturesConsole: Bool = false,
-        maxBodyPreviewCharacters: Int = 24_000
+        maxBodyPreviewCharacters: Int = 24_000,
+        webSocketAckTimeoutMilliseconds: Int = 10_000,
+        restReissueAckTimeoutMilliseconds: Int = 15_000
     ) {
         self.initialURL = initialURL
         self.storageMode = storageMode
@@ -37,5 +47,13 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
         self.capturesWebSocket = capturesWebSocket
         self.capturesConsole = capturesConsole
         self.maxBodyPreviewCharacters = max(0, maxBodyPreviewCharacters)
+        self.webSocketAckTimeoutMilliseconds = max(
+            100,
+            min(webSocketAckTimeoutMilliseconds, 30_000)
+        )
+        self.restReissueAckTimeoutMilliseconds = max(
+            100,
+            min(restReissueAckTimeoutMilliseconds, 30_000)
+        )
     }
 }

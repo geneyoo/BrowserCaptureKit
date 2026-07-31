@@ -21,8 +21,10 @@ public enum BrowserVendor: String, Equatable, Sendable, CaseIterable {
     /// a label-boundary suffix (so `x.liveperson.net` matches `liveperson.net`
     /// but `evilliveperson.net` does not). Kept deliberately small — the
     /// roadmap's first target is LivePerson; others are M4 adapters.
+    static let livePersonOriginSuffixes = ["liveperson.net", "liveperson.com", "lpsnmedia.net"]
+
     private static let originSuffixes: [(BrowserVendor, [String])] = [
-        (.livePerson, ["liveperson.net", "liveperson.com", "lpsnmedia.net"]),
+        (.livePerson, livePersonOriginSuffixes),
         (.zendesk, ["zendesk.com", "zdassets.com", "zopim.com"]),
         (.amazonConnect, ["connect.aws", "my.connect.aws", "awsapps.com"]),
         (.intercom, ["intercom.io", "intercomcdn.com"]),

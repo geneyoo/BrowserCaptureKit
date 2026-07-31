@@ -31,6 +31,13 @@ public enum BrowserActionStatus: String, Codable, Equatable, Sendable {
     case notEditable
     case obscured
     case timedOut
+    /// The transport send may have reached the merchant, but its correlated
+    /// acknowledgement did not arrive. This is uncertain—not safe to retry.
+    case acknowledgementTimedOut
+    /// The process restarted after a server claim was durably authorized but
+    /// before a final local result was saved. No replay is permitted; this
+    /// marks the claimed attempt uncertain for any action kind.
+    case processInterruptedAfterClaim
     case scriptError
     case userActivationRequired
     case humanInputRequired
@@ -43,6 +50,39 @@ public enum BrowserSwipeDirection: String, Codable, Equatable, Sendable {
     case down
     case left
     case right
+}
+
+/// Server-owned lineage for a transport side effect. Unlike DOM element
+/// targets, WebSocket/REST actions have no target carrying snapshot identity,
+/// so every send must present this full binding and match the retained page.
+public struct BrowserActionExecutionBinding: Codable, Equatable, Sendable {
+    public let browserSessionID: String
+    public let contextBundleID: String
+    public let pageEpoch: Int
+    public let pageURL: String
+    public let snapshotID: String
+
+    public init(
+        browserSessionID: String,
+        contextBundleID: String,
+        pageEpoch: Int,
+        pageURL: String,
+        snapshotID: String
+    ) {
+        self.browserSessionID = browserSessionID
+        self.contextBundleID = contextBundleID
+        self.pageEpoch = pageEpoch
+        self.pageURL = pageURL
+        self.snapshotID = snapshotID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case browserSessionID = "browserSessionId"
+        case contextBundleID = "contextBundleId"
+        case pageEpoch
+        case pageURL = "pageUrl"
+        case snapshotID = "snapshotId"
+    }
 }
 
 public struct BrowserElementTarget: Codable, Equatable, Sendable {
@@ -104,11 +144,23 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
     case reload
     case waitFor(BrowserWaitCondition)
     /// Vendor WebSocket API-replay. `frame` is the redacted protocol body the server
-    /// reconstructed; the executor stamps a fresh per-socket request id at inject time.
-    case wsReplay(frame: BrowserJSONValue, note: String)
+    /// reconstructed; the executor stamps a fresh per-socket request id at inject time
+    /// and requires a recognized vendor binding before selecting a live socket.
+    case wsReplay(
+        frame: BrowserJSONValue,
+        note: String,
+        expectedVendorHint: String? = nil,
+        expectedSocketURL: String? = nil,
+        executionBinding: BrowserActionExecutionBinding? = nil
+    )
     /// In-house REST re-issue. Templated send endpoint the client re-POSTs with the
     /// WebView's own credentials.
-    case restReissue(method: String, urlTemplate: String, body: BrowserJSONValue)
+    case restReissue(
+        method: String,
+        urlTemplate: String,
+        body: BrowserJSONValue,
+        executionBinding: BrowserActionExecutionBinding? = nil
+    )
 
     public var kind: BrowserActionKind {
         switch self {
@@ -156,9 +208,12 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
         case condition
         case frame
         case note
+        case expectedVendorHint
+        case expectedSocketURL
         case method
         case urlTemplate
         case body
+        case executionBinding
     }
 
     public init(from decoder: Decoder) throws {
@@ -202,13 +257,23 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
         case .wsReplay:
             self = .wsReplay(
                 frame: try container.decode(BrowserJSONValue.self, forKey: .frame),
-                note: try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+                note: try container.decodeIfPresent(String.self, forKey: .note) ?? "",
+                expectedVendorHint: try container.decodeIfPresent(String.self, forKey: .expectedVendorHint),
+                expectedSocketURL: try container.decodeIfPresent(String.self, forKey: .expectedSocketURL),
+                executionBinding: try container.decodeIfPresent(
+                    BrowserActionExecutionBinding.self,
+                    forKey: .executionBinding
+                )
             )
         case .restReissue:
             self = .restReissue(
                 method: try container.decodeIfPresent(String.self, forKey: .method) ?? "POST",
                 urlTemplate: try container.decode(String.self, forKey: .urlTemplate),
-                body: try container.decodeIfPresent(BrowserJSONValue.self, forKey: .body) ?? .null
+                body: try container.decodeIfPresent(BrowserJSONValue.self, forKey: .body) ?? .null,
+                executionBinding: try container.decodeIfPresent(
+                    BrowserActionExecutionBinding.self,
+                    forKey: .executionBinding
+                )
             )
         }
     }
@@ -241,13 +306,17 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
             break
         case .waitFor(let condition):
             try container.encode(condition, forKey: .condition)
-        case .wsReplay(let frame, let note):
+        case .wsReplay(let frame, let note, let expectedVendorHint, let expectedSocketURL, let executionBinding):
             try container.encode(frame, forKey: .frame)
             try container.encode(note, forKey: .note)
-        case .restReissue(let method, let urlTemplate, let body):
+            try container.encodeIfPresent(expectedVendorHint, forKey: .expectedVendorHint)
+            try container.encodeIfPresent(expectedSocketURL, forKey: .expectedSocketURL)
+            try container.encodeIfPresent(executionBinding, forKey: .executionBinding)
+        case .restReissue(let method, let urlTemplate, let body, let executionBinding):
             try container.encode(method, forKey: .method)
             try container.encode(urlTemplate, forKey: .urlTemplate)
             try container.encode(body, forKey: .body)
+            try container.encodeIfPresent(executionBinding, forKey: .executionBinding)
         }
     }
 }

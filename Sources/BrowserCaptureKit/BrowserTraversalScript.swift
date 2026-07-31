@@ -47,6 +47,19 @@ enum BrowserTraversalScript {
 
           function roleFor(element) { return nullable(element.getAttribute("role")) || implicitRole(element); }
 
+          function isEditableForIdentity(element, role) {
+            const tag = element.tagName.toLowerCase();
+            const type = compact(element.getAttribute("type")).toLocaleLowerCase();
+            if (element.isContentEditable || element.getAttribute("contenteditable") === "true") return true;
+            if (tag === "textarea") return true;
+            if (tag === "input" && !["button", "checkbox", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(type)) return true;
+            return role === "textbox";
+          }
+
+          function containsEditableText(element) {
+            return Boolean(element.querySelector && element.querySelector("textarea, [contenteditable='true'], [role='textbox']"));
+          }
+
           function labelFor(element, role) {
             const aria = compact(element.getAttribute("aria-label"));
             if (aria) return aria;
@@ -59,7 +72,12 @@ enum BrowserTraversalScript {
             const placeholder = compact(element.getAttribute("placeholder"));
             if (placeholder) return placeholder;
             const value = compact(element.value);
-            if ((role === "button" || element.tagName.toLowerCase() === "input") && value) return value;
+            const tag = element.tagName.toLowerCase();
+            const type = compact(element.getAttribute("type")).toLocaleLowerCase();
+            // A live editable value is user data, never element identity. Only
+            // non-editable button controls use their static value as a name.
+            if ((role === "button" || (tag === "input" && ["button", "submit", "reset"].includes(type))) && value) return value;
+            if (isEditableForIdentity(element, role) || containsEditableText(element)) return "";
             return compact(element.innerText || element.textContent || "");
           }
 
@@ -132,7 +150,9 @@ enum BrowserTraversalScript {
               element.tagName.toLowerCase(),
               role || "",
               normalized(label || ""),
-              nullable(element.getAttribute("href")) || nullable(element.href) || "",
+              // Full hrefs can contain OAuth codes, reset tokens, or other
+              // credentials. DOM path + semantic name are sufficient identity.
+              "",
               pathFor(element) || "",
               Math.round(rect.width || 0) + "x" + Math.round(rect.height || 0)
             ].join("|");

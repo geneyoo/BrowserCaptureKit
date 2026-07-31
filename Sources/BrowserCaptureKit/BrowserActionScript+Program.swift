@@ -98,7 +98,9 @@ extension BrowserActionScript {
             if (placeholder) return placeholder;
 
             const value = compact(element.value);
-            if ((role === "button" || element.tagName.toLowerCase() === "input") && value) {
+            const tag = element.tagName.toLowerCase();
+            const type = compact(element.getAttribute("type")).toLocaleLowerCase();
+            if ((role === "button" || (tag === "input" && ["button", "submit", "reset"].includes(type))) && value) {
               return value;
             }
 
@@ -127,6 +129,29 @@ extension BrowserActionScript {
             if (tag === "textarea") return true;
             if (tag === "input" && !["button", "checkbox", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(type)) return true;
             return role === "textbox" && !isDisabled(element);
+          }
+
+          function isSensitiveField(element, summary) {
+            const type = compact(element.getAttribute("type") || "").toLocaleLowerCase();
+            if (type === "password" || type === "hidden") return true;
+
+            const autocomplete = compact(element.getAttribute("autocomplete") || "").toLocaleLowerCase();
+            if (/current-password|new-password|one-time-code|cc-|transaction-/.test(autocomplete)) return true;
+
+            const description = compact([
+              summary?.label || "",
+              element.getAttribute("aria-label") || "",
+              element.getAttribute("name") || "",
+              element.getAttribute("id") || "",
+              element.getAttribute("placeholder") || ""
+            ].join(" ")).toLocaleLowerCase();
+            return [
+              "password", "passcode", "one time", "one-time", "otp",
+              "verification code", "security code", "authentication code", "2fa", "mfa",
+              "card number", "credit card", "debit card", "cardholder", "cvv", "cvc",
+              "expiry", "expiration", "routing number", "bank account", "account number",
+              "social security", "ssn", "username", "login id", "login email", "pin"
+            ].some((term) => description.includes(term));
           }
 
           function isDisabled(element) {
@@ -208,7 +233,7 @@ extension BrowserActionScript {
               element.tagName.toLowerCase(),
               role || "",
               normalized(label || ""),
-              nullable(element.getAttribute("href")) || nullable(element.href) || "",
+              "",
               path || "",
               Math.round(rect.width || 0) + "x" + Math.round(rect.height || 0)
             ].join("|");
@@ -415,10 +440,10 @@ extension BrowserActionScript {
               element.dispatchEvent(new PointerEvent("pointerup", { ...common, pointerId: 1, pointerType: "touch", isPrimary: true }));
             }
             element.dispatchEvent(new MouseEvent("mouseup", common));
-            element.dispatchEvent(new MouseEvent("click", common));
-
             if (typeof element.click === "function") {
               element.click();
+            } else {
+              element.dispatchEvent(new MouseEvent("click", common));
             }
 
             return baseResult("succeeded", "Tapped '" + (summary.label || summary.text || summary.path || "element") + "'.", [summary], summary);
@@ -486,6 +511,15 @@ extension BrowserActionScript {
           if (action === "fill") {
             const failure = failIfUnactionable(matches, selected, true);
             if (failure) return failure;
+            if (isSensitiveField(selected.element, selected)) {
+              return baseResult(
+                "humanInputRequired",
+                "This credential, verification, or payment field must be completed by the user.",
+                matches,
+                selected,
+                ["Sensitive fields are never filled by BrowserCaptureKit."]
+              );
+            }
             return dispatchFill(selected.element, selected, fillText || "");
           }
 

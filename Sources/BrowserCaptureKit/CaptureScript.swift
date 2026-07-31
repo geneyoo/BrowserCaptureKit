@@ -2,14 +2,24 @@ import Foundation
 
 // swiftlint:disable function_body_length type_body_length
 enum CaptureScript {
-    static func source(configuration: BrowserCaptureConfiguration, messageHandlerName: String) -> String {
+    static let privilegedWebSocketReplayFunctionName = "__browserCaptureKitPrivilegedWebSocketReplay"
+
+    static func source(
+        configuration: BrowserCaptureConfiguration,
+        messageHandlerName: String,
+        bridgeToken: String
+    ) -> String {
         let options: [String: Any] = [
             "messageHandlerName": messageHandlerName,
+            "bridgeToken": bridgeToken,
             "capturesFetch": configuration.capturesFetch,
             "capturesXHR": configuration.capturesXHR,
             "capturesWebSocket": configuration.capturesWebSocket,
             "capturesConsole": configuration.capturesConsole,
             "maxBodyPreviewCharacters": configuration.maxBodyPreviewCharacters,
+            "privilegedWebSocketReplayFunctionName": privilegedWebSocketReplayFunctionName,
+            "webSocketAcknowledgementTimeoutMilliseconds": configuration
+                .webSocketAckTimeoutMilliseconds,
         ]
 
         let optionsJSON: String
@@ -26,6 +36,8 @@ enum CaptureScript {
                 (() => {
                   "use strict";
                   const options = \(optionsJSON);
+                  const bridgeToken = String(options.bridgeToken || "");
+                  delete options.bridgeToken;
                   const installKey = "__browserCaptureKitInstalled";
                   if (window[installKey]) {
                     return;
@@ -33,14 +45,50 @@ enum CaptureScript {
                   window[installKey] = true;
 
                   const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[options.messageHandlerName];
+                  const nativePostMessage = handler && typeof handler.postMessage === "function"
+                    ? handler.postMessage.bind(handler)
+                    : null;
+                  const eventTargetAddEventListener = window.EventTarget && window.EventTarget.prototype
+                    ? window.EventTarget.prototype.addEventListener
+                    : null;
+                  const nativeAddEventListener = typeof eventTargetAddEventListener === "function"
+                    ? Function.prototype.call.bind(eventTargetAddEventListener)
+                    : null;
+                  const eventTargetRemoveEventListener = window.EventTarget && window.EventTarget.prototype
+                    ? window.EventTarget.prototype.removeEventListener
+                    : null;
+                  const nativeRemoveEventListener = typeof eventTargetRemoveEventListener === "function"
+                    ? Function.prototype.call.bind(eventTargetRemoveEventListener)
+                    : null;
+                  const NativeURL = window.URL;
+                  const NativeNumber = window.Number;
+                  const NativeString = window.String;
+                  const nativeDefineProperty = Object.defineProperty;
+                  const nativeArrayIsArray = Array.isArray.bind(Array);
+                  const nativeNumberIsInteger = Number.isInteger.bind(Number);
+                  const nativeJSONParse = JSON.parse.bind(JSON);
+                  const nativeJSONStringify = JSON.stringify.bind(JSON);
+                  const nativeStringToLowerCase = Function.prototype.call.bind(String.prototype.toLowerCase);
+                  const nativeSetTimeout = window.setTimeout.bind(window);
+                  const nativeClearTimeout = window.clearTimeout.bind(window);
                   const maxChars = Math.max(0, Number(options.maxBodyPreviewCharacters || 0));
+                  const webSocketAcknowledgementTimeoutMilliseconds = Math.max(
+                    100,
+                    Math.min(30000, Number(options.webSocketAcknowledgementTimeoutMilliseconds || 10000))
+                  );
 
                   function post(payload) {
                     try {
-                      if (!handler || typeof handler.postMessage !== "function") {
+                      if (!nativePostMessage || !bridgeToken || !payload || typeof payload !== "object") {
                         return;
                       }
-                      handler.postMessage(Object.assign({ capturedAtEpochMS: Date.now() }, payload));
+                      // Keep authentication entirely inside this document-start
+                      // closure. Page code can call the public handler name, but
+                      // cannot manufacture a payload accepted by native code.
+                      payload.capturedAtEpochMS = Date.now();
+                      payload.bridgeToken = bridgeToken;
+                      nativePostMessage(payload);
+                      delete payload.bridgeToken;
                     } catch (_) {}
                   }
 
@@ -502,21 +550,235 @@ enum CaptureScript {
                     }
 
                     const OriginalWebSocket = window.WebSocket;
+                    const trackedWebSockets = [];
+                    const trackedWebSocketSet = new WeakSet();
+                    const trackedWebSocketBindings = new WeakMap();
+                    const nativeWeakSetAdd = Function.prototype.call.bind(WeakSet.prototype.add);
+                    const nativeWeakSetHas = Function.prototype.call.bind(WeakSet.prototype.has);
+                    const nativeWeakMapSet = Function.prototype.call.bind(WeakMap.prototype.set);
+                    const nativeWeakMapGet = Function.prototype.call.bind(WeakMap.prototype.get);
+                    const readyStateDescriptor = Object.getOwnPropertyDescriptor(
+                      OriginalWebSocket.prototype,
+                      "readyState"
+                    );
+                    const urlDescriptor = Object.getOwnPropertyDescriptor(
+                      OriginalWebSocket.prototype,
+                      "url"
+                    );
+                    const nativeReadyStateGet = readyStateDescriptor && typeof readyStateDescriptor.get === "function"
+                      ? Function.prototype.call.bind(readyStateDescriptor.get)
+                      : null;
+                    const nativeWebSocketURLGet = urlDescriptor && typeof urlDescriptor.get === "function"
+                      ? Function.prototype.call.bind(urlDescriptor.get)
+                      : null;
+                    const nativeWebSocketSend = typeof OriginalWebSocket.prototype.send === "function"
+                      ? Function.prototype.call.bind(OriginalWebSocket.prototype.send)
+                      : null;
+
+                    function nativeSocketBinding(socket) {
+                      try {
+                        if (!nativeWebSocketURLGet || !NativeURL) {
+                          return null;
+                        }
+                        const resolvedURL = nativeWebSocketURLGet(socket);
+                        const parsed = new NativeURL(resolvedURL);
+                        const host = nativeStringToLowerCase(NativeString(parsed.hostname || ""));
+                        const path = NativeString(parsed.pathname || "/");
+                        const port = parsed.port ? NativeNumber(parsed.port) : 443;
+                        if (
+                          parsed.protocol !== "wss:" ||
+                          !host ||
+                          !nativeNumberIsInteger(port) ||
+                          port < 1 ||
+                          port > 65535 ||
+                          parsed.username ||
+                          parsed.password
+                        ) {
+                          return null;
+                        }
+                        return { url: NativeString(resolvedURL), host, port, path };
+                      } catch (_) {
+                        return null;
+                      }
+                    }
+
+                    async function privilegedWebSocketReplay(
+                      presentedToken,
+                      serializedFrame,
+                      requestID,
+                      expectedHost,
+                      expectedPort,
+                      expectedPath,
+                      requiresExactBinding,
+                      stampsRequestID
+                    ) {
+                      if (
+                        presentedToken !== bridgeToken ||
+                        !nativeReadyStateGet ||
+                        !nativeWebSocketSend ||
+                        !nativeAddEventListener ||
+                        !nativeRemoveEventListener
+                      ) {
+                        return "unauthorized";
+                      }
+
+                      let openSocketCount = 0;
+                      let socket = null;
+                      let binding = null;
+                      for (let index = trackedWebSockets.length - 1; index >= 0; index -= 1) {
+                        const candidate = trackedWebSockets[index];
+                        try {
+                          if (
+                            !candidate ||
+                            !nativeWeakSetHas(trackedWebSocketSet, candidate) ||
+                            nativeReadyStateGet(candidate) !== 1
+                          ) {
+                            continue;
+                          }
+                          openSocketCount += 1;
+                          const candidateBinding = nativeWeakMapGet(trackedWebSocketBindings, candidate);
+                          if (!candidateBinding) {
+                            continue;
+                          }
+                          if (
+                            requiresExactBinding &&
+                            (
+                              candidateBinding.host !== expectedHost ||
+                              candidateBinding.port !== expectedPort ||
+                              candidateBinding.path !== expectedPath
+                            )
+                          ) {
+                            continue;
+                          }
+                          socket = candidate;
+                          binding = candidateBinding;
+                          break;
+                        } catch (_) {}
+                      }
+
+                      if (!socket) {
+                        return openSocketCount === 0 ? "noSocket" : "noTrustedSocket";
+                      }
+
+                      let settleAcknowledgement = null;
+                      try {
+                        let wirePayload = NativeString(serializedFrame || "");
+                        let acknowledgement = null;
+                        if (stampsRequestID) {
+                          const frame = nativeJSONParse(wirePayload);
+                          if (!frame || typeof frame !== "object" || nativeArrayIsArray(frame)) {
+                            return "error:Replay frame was not an object.";
+                          }
+                          frame.id = NativeString(requestID || "");
+                          wirePayload = nativeJSONStringify(frame);
+
+                          // Register before native send so an immediate vendor
+                          // response cannot race past the waiter. Only a trusted
+                          // socket event with this freshly stamped reqId counts.
+                          acknowledgement = new Promise((resolve) => {
+                            let settled = false;
+                            let timeoutID = null;
+                            const finish = (status) => {
+                              if (settled) return;
+                              settled = true;
+                              if (timeoutID != null) nativeClearTimeout(timeoutID);
+                              try { nativeRemoveEventListener(socket, "message", onMessage); } catch (_) {}
+                              try { nativeRemoveEventListener(socket, "close", onClose); } catch (_) {}
+                              try { nativeRemoveEventListener(socket, "error", onError); } catch (_) {}
+                              resolve(status);
+                            };
+                            const onMessage = (event) => {
+                              if (!event || event.isTrusted !== true || typeof event.data !== "string") {
+                                return;
+                              }
+                              try {
+                                const response = nativeJSONParse(event.data);
+                                if (
+                                  !response ||
+                                  response.type !== "ms.PublishEventResponse" ||
+                                  response.reqId !== requestID
+                                ) {
+                                  return;
+                                }
+                                const code = NativeNumber(response.code);
+                                if (nativeNumberIsInteger(code) && code >= 200 && code < 300) {
+                                  finish("acknowledged");
+                                } else if (
+                                  nativeNumberIsInteger(code) &&
+                                  code >= 400 && code < 500 &&
+                                  code !== 408 && code !== 409 && code !== 425 && code !== 429
+                                ) {
+                                  finish("rejected:" + (nativeNumberIsInteger(code) ? code : "unknown"));
+                                } else {
+                                  finish(
+                                    "acknowledgementPending:serverResponse:" +
+                                    (nativeNumberIsInteger(code) ? code : "unknown")
+                                  );
+                                }
+                              } catch (_) {}
+                            };
+                            const onClose = () => finish("acknowledgementPending:socketClosed");
+                            const onError = () => finish("acknowledgementPending:socketError");
+                            settleAcknowledgement = finish;
+                            nativeAddEventListener(socket, "message", onMessage);
+                            nativeAddEventListener(socket, "close", onClose);
+                            nativeAddEventListener(socket, "error", onError);
+                            timeoutID = nativeSetTimeout(
+                              () => finish("acknowledgementTimedOut"),
+                              webSocketAcknowledgementTimeoutMilliseconds
+                            );
+                          });
+                        }
+                        nativeWebSocketSend(socket, wirePayload);
+                        post({
+                          kind: "socket",
+                          source: "websocket",
+                          direction: "outbound",
+                          url: binding.url,
+                          bodyPreview: socketPreview(wirePayload)
+                        });
+                        return acknowledgement ? await acknowledgement : "sent";
+                      } catch (error) {
+                        if (settleAcknowledgement) {
+                          settleAcknowledgement("error:send failed");
+                        }
+                        return "error:" + (error && error.message ? error.message : "send failed");
+                      }
+                    }
+
+                    // Native replay reaches this authenticated, non-replaceable
+                    // closure. Socket identity, native URL binding, ready state,
+                    // and native send are all retained lexically from document
+                    // start; page-owned globals cannot forge a successful send.
+                    try {
+                      nativeDefineProperty(
+                        window,
+                        options.privilegedWebSocketReplayFunctionName,
+                        {
+                          value: privilegedWebSocketReplay,
+                          writable: false,
+                          configurable: false,
+                          enumerable: false
+                        }
+                      );
+                    } catch (_) {}
 
                     function CapturingWebSocket(url, protocols) {
                       const socket = protocols === undefined
                         ? new OriginalWebSocket(url)
                         : new OriginalWebSocket(url, protocols);
-                      const resolvedURL = coerceURL(url);
+                      const binding = nativeSocketBinding(socket);
+                      const resolvedURL = binding ? binding.url : coerceURL(url);
 
-                      // Stash the live socket so native code can API-replay a
-                      // captured protocol frame over the widget's own socket
-                      // (the reliable send path — synthetic UI clicks are
-                      // isTrusted-rejected). Per-frame (window is frame-scoped).
-                      try {
-                        (window.__bckSockets = window.__bckSockets || []).push(socket);
-                        window.__bckLastSocket = socket;
-                      } catch (_) {}
+                      // The registry never crosses this document-start closure.
+                      // Production replay validates native socket identity and
+                      // the URL captured from WebSocket.prototype.url, not any
+                      // mutable page property or constructor argument.
+                      trackedWebSockets[trackedWebSockets.length] = socket;
+                      nativeWeakSetAdd(trackedWebSocketSet, socket);
+                      if (binding) {
+                        nativeWeakMapSet(trackedWebSocketBindings, socket, binding);
+                      }
 
                       post({
                         kind: "socket",
@@ -528,7 +790,14 @@ enum CaptureScript {
                         }
                       });
 
-                      socket.addEventListener("message", (event) => {
+                      if (!nativeAddEventListener) {
+                        return socket;
+                      }
+
+                      nativeAddEventListener(socket, "message", (event) => {
+                        if (!event || event.isTrusted !== true) {
+                          return;
+                        }
                         post({
                           kind: "socket",
                           source: "websocket",
@@ -538,7 +807,7 @@ enum CaptureScript {
                         });
                       });
 
-                      socket.addEventListener("close", (event) => {
+                      nativeAddEventListener(socket, "close", (event) => {
                         post({
                           kind: "socket",
                           source: "websocket",
@@ -552,7 +821,7 @@ enum CaptureScript {
                         });
                       });
 
-                      socket.addEventListener("error", () => {
+                      nativeAddEventListener(socket, "error", () => {
                         post({
                           kind: "socket",
                           source: "websocket",
@@ -561,7 +830,6 @@ enum CaptureScript {
                         });
                       });
 
-                      const originalSend = socket.send;
                       socket.send = function browserCaptureSocketSend(data) {
                         post({
                           kind: "socket",
@@ -570,7 +838,7 @@ enum CaptureScript {
                           url: resolvedURL,
                           bodyPreview: socketPreview(data)
                         });
-                        return originalSend.apply(this, arguments);
+                        return nativeWebSocketSend(this, data);
                       };
 
                       return socket;
@@ -611,7 +879,14 @@ enum CaptureScript {
                         }
                       });
 
-                      source.addEventListener("message", (event) => {
+                      if (!nativeAddEventListener) {
+                        return source;
+                      }
+
+                      nativeAddEventListener(source, "message", (event) => {
+                        if (!event || event.isTrusted !== true) {
+                          return;
+                        }
                         post({
                           kind: "socket",
                           source: "eventsource",

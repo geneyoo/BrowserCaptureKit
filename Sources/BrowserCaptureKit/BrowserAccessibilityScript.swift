@@ -8,7 +8,7 @@ enum BrowserAccessibilityScript {
     private static let body = """
         (() => {
           const __walk = window.__bck.begin();
-          const maxElements = 1200;
+          const maxElements = 500;
           const maxTextLength = 280;
 
           function compact(value) {
@@ -108,6 +108,10 @@ enum BrowserAccessibilityScript {
             return role === "textbox" && !isDisabled(element);
           }
 
+          function containsEditableText(element) {
+            return Boolean(element.querySelector && element.querySelector("textarea, [contenteditable='true'], [role='textbox']"));
+          }
+
           function currentViewport() {
             if (window.visualViewport) {
               return {
@@ -195,7 +199,8 @@ enum BrowserAccessibilityScript {
             if (placeholder) return { label: truncate(placeholder), source: "placeholder" };
 
             const value = compact(element.value);
-            if ((role === "button" || element.tagName.toLowerCase() === "input") && value) {
+            const inputType = compact(element.getAttribute("type")).toLocaleLowerCase();
+            if ((role === "button" || ["button", "submit", "reset"].includes(inputType)) && value) {
               return { label: truncate(value), source: "value" };
             }
 
@@ -235,7 +240,7 @@ enum BrowserAccessibilityScript {
               element.tagName.toLowerCase(),
               role || "",
               compact(label || "").toLocaleLowerCase(),
-              nullable(element.getAttribute("href")) || nullable(element.href) || "",
+              "",
               path || "",
               Math.round(rect.width || 0) + "x" + Math.round(rect.height || 0)
             ].join("|");
@@ -271,6 +276,27 @@ enum BrowserAccessibilityScript {
             return Array.from(new Set(actions));
           }
 
+          function isSensitiveField(element, label) {
+            const type = compact(element.getAttribute("type") || "").toLocaleLowerCase();
+            if (type === "password" || type === "hidden") return true;
+            const autocomplete = compact(element.getAttribute("autocomplete") || "").toLocaleLowerCase();
+            if (/current-password|new-password|one-time-code|cc-|transaction-/.test(autocomplete)) return true;
+            const description = compact([
+              label || "",
+              element.getAttribute("aria-label") || "",
+              element.getAttribute("name") || "",
+              element.getAttribute("id") || "",
+              element.getAttribute("placeholder") || ""
+            ].join(" ")).toLocaleLowerCase();
+            return [
+              "password", "passcode", "one time", "one-time", "otp",
+              "verification code", "security code", "authentication code", "2fa", "mfa",
+              "card number", "credit card", "debit card", "cardholder", "cvv", "cvc",
+              "expiry", "expiration", "routing number", "bank account", "account number",
+              "social security", "ssn", "username", "login id", "login email", "pin"
+            ].some((term) => description.includes(term));
+          }
+
           const candidates = Array.from(document.querySelectorAll("body *"));
           const elements = [];
           const viewport = currentViewport();
@@ -296,6 +322,9 @@ enum BrowserAccessibilityScript {
             const landmarkRoles = ["article", "form", "main", "navigation", "section"];
             const roleIsMeaningful = Boolean(role && (!landmarkRoles.includes(role) || label.label));
             const editable = isEditable(element, role);
+            const sensitive = editable && isSensitiveField(element, label.label);
+            const containsEditableDraft = containsEditableText(element);
+            const labelComesFromEditableContent = (editable || containsEditableDraft) && ["value", "text"].includes(label.source);
             const semantic = Boolean(
               roleIsMeaningful ||
               label.label ||
@@ -324,10 +353,10 @@ enum BrowserAccessibilityScript {
               index: __d.index,
               tagName,
               role,
-              label: label.label,
-              labelSource: label.source,
-              text,
-              value: nullable(element.value),
+              label: labelComesFromEditableContent ? null : label.label,
+              labelSource: labelComesFromEditableContent ? null : label.source,
+              text: (editable || containsEditableDraft) ? null : text,
+              value: editable ? null : nullable(element.value),
               placeholder: nullable(element.getAttribute("placeholder")),
               href: nullable(element.href || element.getAttribute("href")),
               source: nullable(element.currentSrc || element.src || element.getAttribute("src")),
@@ -346,7 +375,7 @@ enum BrowserAccessibilityScript {
               },
               path,
               selectorFingerprint,
-              supportedActions: supportedActionsFor(element, role, interactive, editable)
+              supportedActions: supportedActionsFor(element, role, interactive, editable && !sensitive)
             });
           }
 

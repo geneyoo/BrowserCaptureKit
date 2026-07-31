@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import WebKit
 
 public enum BrowserCaptureError: Error, Sendable {
@@ -26,9 +27,19 @@ public final class BrowserCaptureSession: NSObject {
     public private(set) var webView: WKWebView?
 
     private let messageHandlerName = "browserCapture"
-    private let bridge = ScriptMessageBridge()
-    private(set) var pageEpoch = 0
+    /// Shared only with BrowserCaptureKit's document-start privileged closures.
+    /// It is intentionally not public API and never enters page-owned state.
+    let bridgeToken: String
+    private let bridge: ScriptMessageBridge
+    public private(set) var pageEpoch = 0
     private var capturedResponseCount = 0
+    private var navigationContinuations: [UUID: CheckedContinuation<BrowserPageEvent?, Never>] = [:]
+    private var navigationTimeoutTasks: [UUID: Task<Void, Never>] = [:]
+
+    /// A browser navigation is an external operation. Thirty seconds is the
+    /// documented hard boundary for an `openURL` action so a stalled merchant
+    /// page cannot hold the foreground runner forever.
+    private static let navigationReadinessTimeoutNanoseconds: UInt64 = 30 * 1_000_000_000
 
     /// pageEpoch-scoped elementID→frame map (see `BrowserCaptureSession+Frames`):
     /// the namespace prefix on a child-frame element ID resolves to the owning
@@ -39,6 +50,9 @@ public final class BrowserCaptureSession: NSObject {
 
     public init(configuration: BrowserCaptureConfiguration = BrowserCaptureConfiguration()) {
         self.configuration = configuration
+        let bridgeToken = Self.makeBridgeToken()
+        self.bridgeToken = bridgeToken
+        bridge = ScriptMessageBridge(expectedBridgeToken: bridgeToken)
         super.init()
         bridge.onEvent = { [weak self] event in
             self?.emit(event)
@@ -54,7 +68,11 @@ public final class BrowserCaptureSession: NSObject {
         userContentController.add(bridge, contentWorld: .page, name: messageHandlerName)
         userContentController.addUserScript(
             WKUserScript(
-                source: CaptureScript.source(configuration: configuration, messageHandlerName: messageHandlerName),
+                source: CaptureScript.source(
+                    configuration: configuration,
+                    messageHandlerName: messageHandlerName,
+                    bridgeToken: bridgeToken
+                ),
                 injectionTime: .atDocumentStart,
                 forMainFrameOnly: false,
                 in: .page
@@ -72,6 +90,18 @@ public final class BrowserCaptureSession: NSObject {
         self.webView = webView
 
         return webView
+    }
+
+    private static func makeBridgeToken() -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let status = bytes.withUnsafeMutableBytes { buffer in
+            guard let baseAddress = buffer.baseAddress else {
+                return errSecParam
+            }
+            return SecRandomCopyBytes(kSecRandomDefault, buffer.count, baseAddress)
+        }
+        precondition(status == errSecSuccess, "Unable to create BrowserCaptureKit bridge token.")
+        return Data(bytes).base64EncodedString()
     }
 
     public func loadInitialURL() {
@@ -182,41 +212,6 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
-    private func makeBrowserStateSnapshot(reason: String) async -> BrowserStateSnapshot {
-        guard let webView else {
-            return BrowserStateSnapshot(
-                reason: reason,
-                url: nil,
-                title: nil,
-                userAgent: nil,
-                documentCookie: nil,
-                localStorage: [:],
-                sessionStorage: [:],
-                cookies: [],
-                websiteDataRecords: [],
-                javaScriptError: "No WKWebView is attached."
-            )
-        }
-
-        async let nativeCookies = cookies(from: webView.configuration.websiteDataStore.httpCookieStore)
-        async let websiteRecords = websiteDataRecords(from: webView.configuration.websiteDataStore)
-        async let javaScriptState = pageState(from: webView)
-        let (cookies, records, state) = await (nativeCookies, websiteRecords, javaScriptState)
-
-        return BrowserStateSnapshot(
-            reason: reason,
-            url: webView.url,
-            title: webView.title,
-            userAgent: state.userAgent,
-            documentCookie: state.documentCookie,
-            localStorage: state.localStorage,
-            sessionStorage: state.sessionStorage,
-            cookies: cookies,
-            websiteDataRecords: records,
-            javaScriptError: state.error
-        )
-    }
-
     private func makeAccessibilitySnapshot(reason: String) async -> BrowserAccessibilitySnapshot {
         guard let webView else {
             return BrowserAccessibilitySnapshot(
@@ -254,129 +249,6 @@ public final class BrowserCaptureSession: NSObject {
             elements: state.elements,
             javaScriptError: state.error
         )
-    }
-
-    private func cookies(from cookieStore: WKHTTPCookieStore) async -> [BrowserCookieSnapshot] {
-        let cookies = await withCheckedContinuation { continuation in
-            cookieStore.getAllCookies { cookies in
-                continuation.resume(returning: cookies)
-            }
-        }
-
-        return
-            cookies
-            .sorted { lhs, rhs in
-                if lhs.domain == rhs.domain {
-                    return lhs.name < rhs.name
-                }
-                return lhs.domain < rhs.domain
-            }
-            .map { cookie in
-                BrowserCookieSnapshot(
-                    name: cookie.name,
-                    value: cookie.value,
-                    domain: cookie.domain,
-                    path: cookie.path,
-                    expiresDate: cookie.expiresDate,
-                    isSessionOnly: cookie.isSessionOnly,
-                    isSecure: cookie.isSecure,
-                    isHTTPOnly: cookie.isHTTPOnly
-                )
-            }
-    }
-
-    private func websiteDataRecords(from dataStore: WKWebsiteDataStore) async -> [BrowserWebsiteDataRecordSnapshot] {
-        let dataTypes = WKWebsiteDataStore.allWebsiteDataTypes()
-        let records = await withCheckedContinuation { continuation in
-            dataStore.fetchDataRecords(ofTypes: dataTypes) { records in
-                continuation.resume(returning: records)
-            }
-        }
-
-        return
-            records
-            .sorted { lhs, rhs in
-                lhs.displayName < rhs.displayName
-            }
-            .map { record in
-                BrowserWebsiteDataRecordSnapshot(
-                    displayName: record.displayName,
-                    dataTypes: Array(record.dataTypes).sorted()
-                )
-            }
-    }
-
-    private func pageState(from webView: WKWebView) async -> BrowserPageState {
-        let script = """
-            (() => {
-              const readStorage = (storage) => {
-                const values = {};
-                if (!storage) {
-                  return values;
-                }
-                for (let index = 0; index < storage.length; index += 1) {
-                  const key = storage.key(index);
-                  if (key !== null) {
-                    values[key] = storage.getItem(key);
-                  }
-                }
-                return values;
-              };
-
-              const safe = (read) => {
-                try {
-                  return { value: read(), error: null };
-                } catch (error) {
-                  return { value: null, error: String(error && error.message ? error.message : error) };
-                }
-              };
-
-              const cookie = safe(() => document.cookie);
-              const local = safe(() => readStorage(window.localStorage));
-              const session = safe(() => readStorage(window.sessionStorage));
-              return {
-                url: window.location.href,
-                title: document.title,
-                userAgent: navigator.userAgent,
-                documentCookie: cookie.value,
-                localStorage: local.value || {},
-                sessionStorage: session.value || {},
-                errors: {
-                  documentCookie: cookie.error,
-                  localStorage: local.error,
-                  sessionStorage: session.error
-                }
-              };
-            })();
-            """
-
-        do {
-            let result = try await webView.evaluateJavaScript(script)
-            guard let payload = result as? [String: Any] else {
-                return BrowserPageState(error: "Browser state script returned a non-object result.")
-            }
-
-            let errors = payload["errors"] as? [String: Any]
-            let errorText = errors?
-                .compactMap { key, value -> String? in
-                    guard !(value is NSNull), let value = value as? String, !value.isEmpty else {
-                        return nil
-                    }
-                    return "\(key): \(value)"
-                }
-                .sorted()
-                .joined(separator: "; ")
-
-            return BrowserPageState(
-                userAgent: payload["userAgent"] as? String,
-                documentCookie: payload["documentCookie"] as? String,
-                localStorage: stringDictionary(from: payload["localStorage"]),
-                sessionStorage: stringDictionary(from: payload["sessionStorage"]),
-                error: errorText?.isEmpty == false ? errorText : nil
-            )
-        } catch {
-            return BrowserPageState(error: error.localizedDescription)
-        }
     }
 
     /// One frame's accessibility capture. `frame == nil` targets the main frame;
@@ -439,6 +311,9 @@ public final class BrowserCaptureSession: NSObject {
                 // never actuate into the wrong document.
                 invalidateChildFrameRoutes()
             }
+            if event.kind == .navigationFinished || event.kind == .navigationFailed {
+                completeNavigationWaiters(with: event)
+            }
         case .response, .nativeNetwork:
             capturedResponseCount += 1
         case .browserState, .accessibility, .console, .scriptError, .action:
@@ -446,15 +321,52 @@ public final class BrowserCaptureSession: NSObject {
         }
         onEvent?(event)
     }
+
+    private func waitForNavigationCompletion(start: () -> Void) async -> BrowserPageEvent? {
+        let waiterID = UUID()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                navigationContinuations[waiterID] = continuation
+                navigationTimeoutTasks[waiterID] = Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: Self.navigationReadinessTimeoutNanoseconds)
+                    guard !Task.isCancelled else {
+                        return
+                    }
+                    self?.completeNavigationWaiter(id: waiterID, event: nil)
+                }
+                start()
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.completeNavigationWaiter(id: waiterID, event: nil)
+            }
+        }
+    }
+
+    private func completeNavigationWaiters(with event: BrowserPageEvent) {
+        let waiterIDs = Array(navigationContinuations.keys)
+        for waiterID in waiterIDs {
+            completeNavigationWaiter(id: waiterID, event: event)
+        }
+    }
+
+    private func completeNavigationWaiter(id: UUID, event: BrowserPageEvent?) {
+        navigationTimeoutTasks.removeValue(forKey: id)?.cancel()
+        navigationContinuations.removeValue(forKey: id)?.resume(returning: event)
+    }
 }
 
 extension BrowserCaptureSession {
     @discardableResult
-    public func perform(_ action: BrowserActionRequest) async -> BrowserActionResult {
+    public func perform(
+        _ action: BrowserActionRequest,
+        authorizationGate: (@MainActor () -> Bool)? = nil
+    ) async -> BrowserActionResult {
         let context = BrowserActionExecutionContext(
             requestID: UUID(),
             responseCountBefore: capturedResponseCount,
-            urlBefore: webView?.url
+            urlBefore: webView?.url,
+            authorizationGate: authorizationGate
         )
         let result = await perform(action, context: context)
         emit(.action(result))
@@ -500,6 +412,9 @@ extension BrowserCaptureSession {
         _ action: BrowserActionRequest,
         context: BrowserActionExecutionContext
     ) async -> BrowserActionResult {
+        guard context.isExecutionAuthorized else {
+            return executionAuthorizationFailure(context: context, kind: action.kind)
+        }
         // Stale-epoch rejection (WS-TGT): a target captured against an earlier
         // page (navigation/reload bumped pageEpoch) must not act on the new DOM.
         if let targetEpoch = targetPageEpoch(for: action), targetEpoch != pageEpoch {
@@ -543,22 +458,20 @@ extension BrowserCaptureSession {
         case .swipe(let target, let direction):
             return await performSwipe(context: context, target: target, direction: direction)
         case .openURL(let url):
-            load(url)
-            return navigationResult(context: context, kind: .openURL, message: "Opened \(url.absoluteString).")
-        case .back:
-            goBack()
-            return navigationResult(context: context, kind: .back, message: "Requested browser back navigation.")
-        case .forward:
-            goForward()
-            return navigationResult(context: context, kind: .forward, message: "Requested browser forward navigation.")
-        case .reload:
-            reload()
-            return navigationResult(context: context, kind: .reload, message: "Requested browser reload.")
+            return await performOpenURL(url, context: context)
+        case .back, .forward, .reload:
+            return performNavigationControl(action, context: context)
         case .waitFor(let condition):
             return await performWait(context: context, condition: condition)
-        case .wsReplay(let frame, let note):
-            return await performWebSocketReplay(frame: frame, note: note, context: context)
-        case .restReissue(let method, let urlTemplate, let body):
+        case .wsReplay(let frame, let note, let expectedVendorHint, let expectedSocketURL, _):
+            return await performWebSocketReplay(
+                frame: frame,
+                note: note,
+                expectedVendorHint: expectedVendorHint,
+                expectedSocketURL: expectedSocketURL,
+                context: context
+            )
+        case .restReissue(let method, let urlTemplate, let body, _):
             return await performRestReissue(method: method, urlTemplate: urlTemplate, body: body, context: context)
         }
     }
@@ -595,6 +508,85 @@ extension BrowserCaptureSession {
         )
     }
 
+    private func performNavigationControl(
+        _ action: BrowserActionRequest,
+        context: BrowserActionExecutionContext
+    ) -> BrowserActionResult {
+        switch action {
+        case .back:
+            goBack()
+            return navigationResult(context: context, kind: .back, message: "Requested browser back navigation.")
+        case .forward:
+            goForward()
+            return navigationResult(context: context, kind: .forward, message: "Requested browser forward navigation.")
+        case .reload:
+            reload()
+            return navigationResult(context: context, kind: .reload, message: "Requested browser reload.")
+        default:
+            preconditionFailure("Expected a browser navigation-control action.")
+        }
+    }
+
+    private func performOpenURL(
+        _ url: URL,
+        context: BrowserActionExecutionContext
+    ) async -> BrowserActionResult {
+        guard let webView else {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .openURL,
+                status: .noWebView,
+                message: "No WKWebView is attached.",
+                urlBefore: context.urlBefore,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+
+        var authorizationExpired = false
+        let completion = await waitForNavigationCompletion {
+            guard context.isExecutionAuthorized else {
+                authorizationExpired = true
+                return
+            }
+            webView.load(URLRequest(url: url))
+        }
+        if authorizationExpired {
+            return executionAuthorizationFailure(context: context, kind: .openURL)
+        }
+        guard let completion else {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .openURL,
+                status: .timedOut,
+                message: "The merchant page did not finish loading within 30 seconds.",
+                urlBefore: context.urlBefore,
+                urlAfter: webView.url,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+        guard completion.kind == .navigationFinished else {
+            return BrowserActionResult(
+                requestID: context.requestID,
+                kind: .openURL,
+                status: .scriptError,
+                message: completion.message ?? "The merchant page failed to load.",
+                urlBefore: context.urlBefore,
+                urlAfter: completion.url ?? webView.url,
+                networkEventCountDelta: networkDelta(since: context)
+            )
+        }
+
+        return BrowserActionResult(
+            requestID: context.requestID,
+            kind: .openURL,
+            status: .succeeded,
+            message: "Opened \((completion.url ?? url).absoluteString).",
+            urlBefore: context.urlBefore,
+            urlAfter: completion.url ?? webView.url,
+            networkEventCountDelta: networkDelta(since: context)
+        )
+    }
+
     /// `frame == nil` evaluates in the main frame; a child frame is targeted via
     /// the routing map (`performRoutedScriptedAction`).
     func performScriptedAction(
@@ -616,16 +608,16 @@ extension BrowserCaptureSession {
         }
 
         do {
+            guard context.isExecutionAuthorized else {
+                return executionAuthorizationFailure(context: context, kind: kind)
+            }
             let result = try await webView.evaluateJavaScript(source, in: frame, contentWorld: .page)
             guard let payload = result as? [String: Any] else {
-                return BrowserActionResult(
-                    requestID: context.requestID,
+                return postInvocationScriptFailureResult(
+                    context: context,
                     kind: kind,
-                    status: .scriptError,
                     message: "Action script returned a non-object result.",
-                    urlBefore: context.urlBefore,
-                    urlAfter: webView.url,
-                    networkEventCountDelta: networkDelta(since: context)
+                    webViewURL: webView.url
                 )
             }
 
@@ -637,16 +629,49 @@ extension BrowserCaptureSession {
                 redactionWarnings: redactionWarnings
             )
         } catch {
-            return BrowserActionResult(
-                requestID: context.requestID,
+            return postInvocationScriptFailureResult(
+                context: context,
                 kind: kind,
-                status: .scriptError,
                 message: error.localizedDescription,
-                urlBefore: context.urlBefore,
-                urlAfter: webView.url,
-                networkEventCountDelta: networkDelta(since: context)
+                webViewURL: webView.url
             )
         }
+    }
+
+    private func postInvocationScriptFailureResult(
+        context: BrowserActionExecutionContext,
+        kind: BrowserActionKind,
+        message: String,
+        webViewURL: URL?
+    ) -> BrowserActionResult {
+        let merchantStateMayHaveChanged = Self.isMutatingScriptedAction(kind)
+        return BrowserActionResult(
+            requestID: context.requestID,
+            kind: kind,
+            status: Self.postInvocationFailureStatus(for: kind),
+            message: merchantStateMayHaveChanged
+                ? "The page stopped responding after Palette invoked the action, so the merchant outcome is unknown: \(message)"
+                : message,
+            urlBefore: context.urlBefore,
+            urlAfter: webViewURL,
+            networkEventCountDelta: networkDelta(since: context),
+            warnings: merchantStateMayHaveChanged
+                ? ["Do not retry automatically. Resolve this claimed action through recovery."]
+                : []
+        )
+    }
+
+    static func isMutatingScriptedAction(_ kind: BrowserActionKind) -> Bool {
+        switch kind {
+        case .tap, .fill, .clear, .pressEnter:
+            true
+        case .observe, .scroll, .swipe, .openURL, .back, .forward, .reload, .waitFor, .wsReplay, .restReissue:
+            false
+        }
+    }
+
+    static func postInvocationFailureStatus(for kind: BrowserActionKind) -> BrowserActionStatus {
+        isMutatingScriptedAction(kind) ? .processInterruptedAfterClaim : .scriptError
     }
 
     private func scriptedActionResult(
@@ -658,8 +683,25 @@ extension BrowserCaptureSession {
     ) async -> BrowserActionResult {
         let afterSnapshot = await makeAccessibilitySnapshot(reason: "action:\(kind.rawValue)")
         emit(.accessibility(afterSnapshot))
-        let statusText = string(payload["status"]) ?? "scriptError"
-        let status = BrowserActionStatus(rawValue: statusText) ?? .scriptError
+        let statusText = string(payload["status"])
+        guard let statusText,
+            let status = BrowserActionStatus(rawValue: statusText)
+        else {
+            return postInvocationScriptFailureResult(
+                context: context,
+                kind: kind,
+                message: "Action script returned an invalid status.",
+                webViewURL: webViewURL
+            )
+        }
+        if status == .scriptError, Self.isMutatingScriptedAction(kind) {
+            return postInvocationScriptFailureResult(
+                context: context,
+                kind: kind,
+                message: string(payload["message"]) ?? "The action script reported an error after invocation.",
+                webViewURL: webViewURL
+            )
+        }
         let selectedElement = resolvedElement(from: payload["selectedElement"])
         let candidates = (payload["candidates"] as? [[String: Any]] ?? [])
             .compactMap { resolvedElement(from: $0) }
@@ -762,6 +804,9 @@ extension BrowserCaptureSession {
         deltaX: Double,
         deltaY: Double
     ) -> BrowserActionResult {
+        guard context.isExecutionAuthorized else {
+            return executionAuthorizationFailure(context: context, kind: .scroll)
+        }
         guard let scrollView = webView?.scrollView else {
             return BrowserActionResult(
                 requestID: context.requestID,
@@ -799,14 +844,22 @@ extension BrowserCaptureSession {
         capturedResponseCount - context.responseCountBefore
     }
 
-}
+    func executionAuthorizationFailure(
+        context: BrowserActionExecutionContext,
+        kind: BrowserActionKind
+    ) -> BrowserActionResult {
+        BrowserActionResult(
+            requestID: context.requestID,
+            kind: kind,
+            status: .staleSnapshot,
+            message: "Execution authorization expired before the merchant action could safely start.",
+            urlBefore: context.urlBefore,
+            urlAfter: webView?.url,
+            networkEventCountDelta: networkDelta(since: context),
+            warnings: ["No merchant side effect was started."]
+        )
+    }
 
-private struct BrowserPageState {
-    var userAgent: String?
-    var documentCookie: String?
-    var localStorage: [String: String] = [:]
-    var sessionStorage: [String: String] = [:]
-    var error: String?
 }
 
 struct BrowserAccessibilityPageState {
@@ -828,6 +881,24 @@ struct BrowserActionExecutionContext {
     let requestID: UUID
     let responseCountBefore: Int
     let urlBefore: URL?
+    let authorizationGate: (@MainActor () -> Bool)?
+
+    init(
+        requestID: UUID,
+        responseCountBefore: Int,
+        urlBefore: URL?,
+        authorizationGate: (@MainActor () -> Bool)? = nil
+    ) {
+        self.requestID = requestID
+        self.responseCountBefore = responseCountBefore
+        self.urlBefore = urlBefore
+        self.authorizationGate = authorizationGate
+    }
+
+    @MainActor
+    var isExecutionAuthorized: Bool {
+        authorizationGate?() ?? true
+    }
 }
 
 private extension BrowserActionResult {
