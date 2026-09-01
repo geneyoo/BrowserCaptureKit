@@ -3,7 +3,7 @@ import Foundation
 /// Stable protocol metadata shared by snapshots, commands, events, and results.
 public enum BrowserCaptureContract {
     public static let currentSchemaVersion = 1
-    public static let libraryVersion = "0.1.0"
+    public static let libraryVersion = "0.1.1"
 }
 
 /// A transport-ready command envelope. The action remains browser-neutral while

@@ -8,9 +8,10 @@ fi
 destination="${BCK_DESTINATION:-}"
 
 if [[ -z "$destination" ]]; then
-  simulator_id="$({
-    xcodebuild -scheme BrowserCaptureKit -showdestinations 2>/dev/null || true
-  } | sed -nE 's/.*platform:iOS Simulator.*id:([^,]+),.*/\1/p' | grep -v dvtdevice | head -1 | xargs)"
+  destinations="$(xcodebuild -scheme BrowserCaptureKit -showdestinations 2>/dev/null || true)"
+  simulator_id="$(sed -nE \
+    '/platform:iOS Simulator/!d; /dvtdevice/d; s/.*id:([^,]+),.*/\1/; s/^[[:space:]]+//; s/[[:space:]]+$//; p; q' \
+    <<< "$destinations")"
   if [[ -z "$simulator_id" ]]; then
     echo "No available iOS Simulator destination was found." >&2
     exit 1
