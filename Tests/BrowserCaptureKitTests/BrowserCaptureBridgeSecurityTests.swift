@@ -58,7 +58,12 @@ final class BrowserCaptureBridgeSecurityTests: XCTestCase {
         XCTAssertFalse(source.contains("window.bridgeToken"))
     }
 
-    func testPageCannotForgeInboundVendorEvidenceThroughPublicHandlerOrSyntheticMessageEvent() async {
+    func testPageCannotForgeInboundVendorEvidenceThroughPublicHandlerOrSyntheticMessageEvent()
+        async throws
+    {
+        guard ProcessInfo.processInfo.environment["BCK_RUN_UNHOSTED_WEBKIT_TESTS"] == "1" else {
+            throw XCTSkip("Live WKWebView tests require an app-hosted conformance target.")
+        }
         let session = BrowserCaptureSession(
             configuration: BrowserCaptureConfiguration(
                 storageMode: .nonPersistent,
@@ -137,6 +142,9 @@ final class BrowserCaptureBridgeSecurityTests: XCTestCase {
     }
 
     func testFillAndSubmitJavaScriptReplyLossBecomesUnknownAfterInvocation() async throws {
+        guard ProcessInfo.processInfo.environment["BCK_RUN_UNHOSTED_WEBKIT_TESTS"] == "1" else {
+            throw XCTSkip("Live WKWebView tests require an app-hosted conformance target.")
+        }
         let session = BrowserCaptureSession(
             configuration: BrowserCaptureConfiguration(storageMode: .nonPersistent)
         )

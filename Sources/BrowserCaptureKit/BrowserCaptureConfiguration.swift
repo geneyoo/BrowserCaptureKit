@@ -1,11 +1,12 @@
 import Foundation
 
-public struct BrowserCaptureConfiguration: Equatable, Sendable {
+public struct BrowserCaptureConfiguration: Codable, Equatable, Sendable {
     public static let defaultInitialURL: URL = URL(string: "about:blank") ?? URL(fileURLWithPath: "/")
 
-    public static let defaultPersistentStoreIdentifier = UUID(uuidString: "B2D41C04-19E7-4FA5-986A-F6D3B9115E5D") ?? UUID()
+    public static let defaultPersistentStoreIdentifier =
+        UUID(uuidString: "B2D41C04-19E7-4FA5-986A-F6D3B9115E5D") ?? UUID()
 
-    public enum StorageMode: Equatable, Sendable {
+    public enum StorageMode: Codable, Equatable, Sendable {
         case nonPersistent
         case persistent(identifier: UUID)
     }
@@ -31,7 +32,8 @@ public struct BrowserCaptureConfiguration: Equatable, Sendable {
 
     public init(
         initialURL: URL = BrowserCaptureConfiguration.defaultInitialURL,
-        storageMode: StorageMode = .persistent(identifier: BrowserCaptureConfiguration.defaultPersistentStoreIdentifier),
+        storageMode: StorageMode = .persistent(
+            identifier: BrowserCaptureConfiguration.defaultPersistentStoreIdentifier),
         capturesFetch: Bool = true,
         capturesXHR: Bool = true,
         capturesWebSocket: Bool = true,

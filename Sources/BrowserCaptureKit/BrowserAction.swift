@@ -1,6 +1,6 @@
 import Foundation
 
-public enum BrowserActionKind: String, Codable, Equatable, Sendable {
+public enum BrowserActionKind: String, Codable, Equatable, Sendable, CaseIterable {
     case observe
     case tap
     case fill
@@ -221,7 +221,8 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
         let kind = try container.decode(BrowserActionKind.self, forKey: .kind)
         switch kind {
         case .observe:
-            self = .observe(reason: try container.decodeIfPresent(String.self, forKey: .reason) ?? "protocol")
+            self = .observe(
+                reason: try container.decodeIfPresent(String.self, forKey: .reason) ?? "protocol")
         case .tap:
             self = .tap(target: try container.decode(BrowserElementTarget.self, forKey: .target))
         case .fill:
@@ -233,7 +234,8 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
         case .clear:
             self = .clear(target: try container.decode(BrowserElementTarget.self, forKey: .target))
         case .pressEnter:
-            self = .pressEnter(target: try container.decodeIfPresent(BrowserElementTarget.self, forKey: .target))
+            self = .pressEnter(
+                target: try container.decodeIfPresent(BrowserElementTarget.self, forKey: .target))
         case .scroll:
             self = .scroll(
                 deltaX: try container.decodeIfPresent(Double.self, forKey: .deltaX) ?? 0,
@@ -306,7 +308,8 @@ public enum BrowserActionRequest: Codable, Equatable, Sendable {
             break
         case .waitFor(let condition):
             try container.encode(condition, forKey: .condition)
-        case .wsReplay(let frame, let note, let expectedVendorHint, let expectedSocketURL, let executionBinding):
+        case .wsReplay(
+            let frame, let note, let expectedVendorHint, let expectedSocketURL, let executionBinding):
             try container.encode(frame, forKey: .frame)
             try container.encode(note, forKey: .note)
             try container.encodeIfPresent(expectedVendorHint, forKey: .expectedVendorHint)

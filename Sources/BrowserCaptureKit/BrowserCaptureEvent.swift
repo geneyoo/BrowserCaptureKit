@@ -1,6 +1,6 @@
 import Foundation
 
-public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
+public enum BrowserCaptureEvent: Codable, Identifiable, Equatable, Sendable {
     case page(BrowserPageEvent)
     case response(CapturedResponse)
     case nativeNetwork(BrowserNativeNetworkEvent)
@@ -51,9 +51,83 @@ public enum BrowserCaptureEvent: Identifiable, Equatable, Sendable {
             error.capturedAt
         }
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case payload
+    }
+
+    private enum Kind: String, Codable {
+        case page
+        case response
+        case nativeNetwork
+        case browserState
+        case accessibility
+        case action
+        case console
+        case scriptError
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(Kind.self, forKey: .kind) {
+        case .page:
+            self = .page(try container.decode(BrowserPageEvent.self, forKey: .payload))
+        case .response:
+            self = .response(try container.decode(CapturedResponse.self, forKey: .payload))
+        case .nativeNetwork:
+            self = .nativeNetwork(
+                try container.decode(BrowserNativeNetworkEvent.self, forKey: .payload)
+            )
+        case .browserState:
+            self = .browserState(
+                try container.decode(BrowserStateSnapshot.self, forKey: .payload)
+            )
+        case .accessibility:
+            self = .accessibility(
+                try container.decode(BrowserAccessibilitySnapshot.self, forKey: .payload)
+            )
+        case .action:
+            self = .action(try container.decode(BrowserActionResult.self, forKey: .payload))
+        case .console:
+            self = .console(try container.decode(BrowserConsoleEvent.self, forKey: .payload))
+        case .scriptError:
+            self = .scriptError(try container.decode(BrowserScriptError.self, forKey: .payload))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .page(let value):
+            try container.encode(Kind.page, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .response(let value):
+            try container.encode(Kind.response, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .nativeNetwork(let value):
+            try container.encode(Kind.nativeNetwork, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .browserState(let value):
+            try container.encode(Kind.browserState, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .accessibility(let value):
+            try container.encode(Kind.accessibility, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .action(let value):
+            try container.encode(Kind.action, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .console(let value):
+            try container.encode(Kind.console, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        case .scriptError(let value):
+            try container.encode(Kind.scriptError, forKey: .kind)
+            try container.encode(value, forKey: .payload)
+        }
+    }
 }
 
-public struct BrowserStateSnapshot: Identifiable, Equatable, Sendable {
+public struct BrowserStateSnapshot: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let capturedAt: Date
     public let reason: String
@@ -96,7 +170,7 @@ public struct BrowserStateSnapshot: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct BrowserCookieSnapshot: Identifiable, Equatable, Sendable {
+public struct BrowserCookieSnapshot: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let name: String
     public let value: String
@@ -130,7 +204,7 @@ public struct BrowserCookieSnapshot: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct BrowserWebsiteDataRecordSnapshot: Identifiable, Equatable, Sendable {
+public struct BrowserWebsiteDataRecordSnapshot: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let displayName: String
     public let dataTypes: [String]
@@ -146,8 +220,8 @@ public struct BrowserWebsiteDataRecordSnapshot: Identifiable, Equatable, Sendabl
     }
 }
 
-public struct BrowserNativeNetworkEvent: Identifiable, Equatable, Sendable {
-    public enum Phase: String, Equatable, Sendable {
+public struct BrowserNativeNetworkEvent: Codable, Identifiable, Equatable, Sendable {
+    public enum Phase: String, Codable, Equatable, Sendable {
         case navigationAction
         case navigationResponse
     }
@@ -197,8 +271,8 @@ public struct BrowserNativeNetworkEvent: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct BrowserPageEvent: Identifiable, Equatable, Sendable {
-    public enum Kind: String, Equatable, Sendable {
+public struct BrowserPageEvent: Codable, Identifiable, Equatable, Sendable {
+    public enum Kind: String, Codable, Equatable, Sendable {
         case navigationStarted
         case navigationFinished
         case navigationFailed
@@ -229,7 +303,7 @@ public struct BrowserPageEvent: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct BrowserConsoleEvent: Identifiable, Equatable, Sendable {
+public struct BrowserConsoleEvent: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let capturedAt: Date
     public let level: String
@@ -248,7 +322,7 @@ public struct BrowserConsoleEvent: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct BrowserScriptError: Identifiable, Equatable, Sendable {
+public struct BrowserScriptError: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let capturedAt: Date
     public let message: String

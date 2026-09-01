@@ -9,7 +9,7 @@ import Foundation
 ///
 /// Raw values are the exact strings the capture envelope carries
 /// (`docs/copilot-lane-contracts.md` §1), so encoding is `rawValue`.
-public enum BrowserVendor: String, Equatable, Sendable, CaseIterable {
+public enum BrowserVendor: String, Codable, Equatable, Sendable, CaseIterable {
     case livePerson
     case zendesk
     case amazonConnect

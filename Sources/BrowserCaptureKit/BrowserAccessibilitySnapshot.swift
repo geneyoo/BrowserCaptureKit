@@ -1,6 +1,6 @@
 import Foundation
 
-public struct BrowserAccessibilitySnapshot: Identifiable, Equatable, Sendable {
+public struct BrowserAccessibilitySnapshot: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let schemaVersion: Int
     public let capturedAt: Date
@@ -64,7 +64,7 @@ public struct BrowserAccessibilitySnapshot: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct BrowserAccessibilityElementSnapshot: Identifiable, Equatable, Sendable {
+public struct BrowserAccessibilityElementSnapshot: Codable, Identifiable, Equatable, Sendable {
     public let id: UUID
     public let stableID: String?
     public let index: Int

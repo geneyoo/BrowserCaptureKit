@@ -5,7 +5,7 @@ import Foundation
 /// This lets a consumer tell traffic that originated in a cross-origin child
 /// iframe (e.g. an embedded customer-service chat widget) apart from
 /// main-page/analytics traffic.
-public struct CapturedFrameInfo: Equatable, Sendable {
+public struct CapturedFrameInfo: Codable, Equatable, Sendable {
     public let isMainFrame: Bool
     /// `WKSecurityOrigin` rendered as `scheme://host[:port]`.
     public let securityOrigin: String?
@@ -25,12 +25,13 @@ public struct CapturedFrameInfo: Equatable, Sendable {
         self.isMainFrame = isMainFrame
         self.securityOrigin = securityOrigin
         self.requestURL = requestURL
-        self.vendorHint = vendorHint ?? BrowserVendor(origin: securityOrigin) ?? BrowserVendor(origin: requestURL)
+        self.vendorHint =
+            vendorHint ?? BrowserVendor(origin: securityOrigin) ?? BrowserVendor(origin: requestURL)
     }
 }
 
-public struct CapturedResponse: Identifiable, Equatable, Sendable {
-    public enum Source: String, Equatable, Sendable {
+public struct CapturedResponse: Codable, Identifiable, Equatable, Sendable {
+    public enum Source: String, Codable, Equatable, Sendable {
         case fetch
         case xhr
         case websocket
@@ -40,7 +41,7 @@ public struct CapturedResponse: Identifiable, Equatable, Sendable {
 
     /// Direction of a streamed frame for socket-style sources. `nil` for
     /// request/response sources (fetch/xhr/beacon).
-    public enum Direction: String, Equatable, Sendable {
+    public enum Direction: String, Codable, Equatable, Sendable {
         case outbound
         case inbound
         case open
