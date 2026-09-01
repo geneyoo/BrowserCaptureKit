@@ -9,10 +9,27 @@ destination="${BCK_DESTINATION:-}"
 
 if [[ -z "$destination" ]]; then
   available_devices="$(xcrun simctl list devices available)"
-  simulator_ids="$(sed -nE \
-    's/.*\(([[:xdigit:]-]{36})\) \((Booted|Shutdown)\)[[:space:]]*$/\1/p' \
-    <<< "$available_devices")"
-  simulator_id="${simulator_ids%%$'\n'*}"
+  simulator_id=""
+  in_ios_runtime=false
+  selected_in_runtime=false
+  while IFS= read -r line; do
+    case "$line" in
+      "-- iOS "*)
+        in_ios_runtime=true
+        selected_in_runtime=false
+        ;;
+      "-- "*)
+        in_ios_runtime=false
+        ;;
+      *)
+        if [[ "$in_ios_runtime" == true && "$selected_in_runtime" == false &&
+          "$line" =~ \(([[:xdigit:]-]{36})\)[[:space:]]+\((Booted|Shutdown)\) ]]; then
+          simulator_id="${BASH_REMATCH[1]}"
+          selected_in_runtime=true
+        fi
+        ;;
+    esac
+  done <<< "$available_devices"
   if [[ -z "$simulator_id" ]]; then
     echo "No available iOS Simulator destination was found." >&2
     echo "$available_devices" >&2
