@@ -8,12 +8,14 @@ fi
 destination="${BCK_DESTINATION:-}"
 
 if [[ -z "$destination" ]]; then
-  destinations="$(xcodebuild -scheme BrowserCaptureKit -showdestinations 2>/dev/null || true)"
-  simulator_id="$(sed -nE \
-    '/platform:iOS Simulator/!d; /dvtdevice/d; s/.*id:([^,]+),.*/\1/; s/^[[:space:]]+//; s/[[:space:]]+$//; p; q' \
-    <<< "$destinations")"
+  available_devices="$(xcrun simctl list devices available)"
+  simulator_ids="$(sed -nE \
+    's/.*\(([[:xdigit:]-]{36})\) \((Booted|Shutdown)\)[[:space:]]*$/\1/p' \
+    <<< "$available_devices")"
+  simulator_id="${simulator_ids%%$'\n'*}"
   if [[ -z "$simulator_id" ]]; then
     echo "No available iOS Simulator destination was found." >&2
+    echo "$available_devices" >&2
     exit 1
   fi
   destination="platform=iOS Simulator,id=$simulator_id"

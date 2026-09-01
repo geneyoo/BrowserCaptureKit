@@ -16,5 +16,9 @@ jobs:
       - uses: actions/checkout@v5
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Toolchain diagnostics
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available
       - name: Build and test
         run: make verify
