@@ -9,7 +9,8 @@ agents operating authenticated web flows through public App Store-compatible
 WebKit APIs.
 
 > Status: private pre-1.0 software. The wire schema is versioned, but the Swift
-> API may change until the physical-device and second-host conformance gates pass.
+> API may change before 1.0. Simulator, physical-device, and second-host gates
+> are active.
 
 ## Why it exists
 
@@ -142,7 +143,18 @@ make verify
 
 `swift test` targets the macOS host and is not the package's verification
 command. BrowserCaptureKit is an iOS runtime; `make verify` selects an available
-iOS Simulator and runs the package tests there.
+iOS Simulator, runs the package suite, and runs live WebKit tests in the
+`BrowserCaptureKitConformanceHost` application.
+
+Run the same hosted WebKit tests on an attached iPhone before a release that
+changes WebKit lifecycle, bridge security, action execution, or replay:
+
+```bash
+make conformance-device
+```
+
+`BCK_CONFORMANCE_DESTINATION` can select an explicit Xcode destination. See
+[docs/CONFORMANCE.md](docs/CONFORMANCE.md).
 
 ## License
 
