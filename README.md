@@ -156,6 +156,13 @@ make conformance-device
 `BCK_CONFORMANCE_DESTINATION` can select an explicit Xcode destination. See
 [docs/CONFORMANCE.md](docs/CONFORMANCE.md).
 
+## Phone browser host and relay
+
+`PhoneBrowser/` is a foreground iPhone app that pairs with the relay in
+`Relay/` and executes typed remote commands (observe, navigate, tap, fill,
+events, command status) with a durable command journal, human takeover, and
+sanitized evidence export. See [docs/PHONE_BROWSER_RUNBOOK.md](docs/PHONE_BROWSER_RUNBOOK.md).
+
 ## License
 
 Private and proprietary. See [LICENSE](LICENSE).
