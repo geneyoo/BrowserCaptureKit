@@ -1,6 +1,7 @@
 import BrowserCaptureKit
 import Foundation
 import Observation
+import OSLog
 import SwiftUI
 import UIKit
 
@@ -35,6 +36,7 @@ final class PhoneBrowserModel {
 
     @ObservationIgnored private var connection: RelayConnection?
     @ObservationIgnored private let journal: CommandJournal
+    @ObservationIgnored private let log = Logger(subsystem: "com.geneyoo.phonebrowser", category: "model")
 
     init() {
         let defaults = UserDefaults.standard
@@ -116,6 +118,7 @@ final class PhoneBrowserModel {
         isPairing = true
         pairingError = nil
         defer { isPairing = false }
+        log.info("Pairing with relay \(relayURLText, privacy: .public)")
         do {
             let credential = try await PairingClient.pair(
                 relayURLText: relayURLText,
@@ -129,8 +132,10 @@ final class PhoneBrowserModel {
                 credentialWarning = "Credential not persisted (Keychain unavailable: \(error.localizedDescription)); pair again after relaunch."
             }
             self.credential = credential
+            log.info("Paired as device \(credential.deviceID, privacy: .public)")
             connect()
         } catch {
+            log.error("Pairing failed: \(String(describing: error), privacy: .public)")
             pairingError = error.localizedDescription
         }
     }
@@ -182,6 +187,7 @@ final class PhoneBrowserModel {
             )
         }
         connection.onStateChanged = { [weak self] state in
+            self?.log.info("Relay connection state: \(String(describing: state), privacy: .public)")
             self?.connectionState = state
             self?.readiness = state == .connected ? (self?.coordinator.readiness ?? .disconnected) : .disconnected
         }

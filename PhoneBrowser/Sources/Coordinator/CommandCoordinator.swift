@@ -52,16 +52,16 @@ final class CommandCoordinator {
         self.sessionID = sessionID
         owner.onCaptureEvent = { [weak self] event in
             guard let self else { return }
-            evidence.record(.capture(event), pageEpoch: owner.session.pageEpoch)
+            self.evidence.record(.capture(event), pageEpoch: self.owner.session.pageEpoch)
         }
         owner.onDialog = { [weak self] kind, message in
             guard let self else { return }
-            evidence.record(.dialog(kind: kind, message: message), pageEpoch: owner.session.pageEpoch)
+            self.evidence.record(.dialog(kind: kind, message: message), pageEpoch: self.owner.session.pageEpoch)
         }
         owner.onLifecycle = { [weak self] name in
             guard let self else { return }
-            evidence.record(.lifecycle(name), pageEpoch: owner.session.pageEpoch)
-            onStatusChanged?()
+            self.evidence.record(.lifecycle(name), pageEpoch: self.owner.session.pageEpoch)
+            self.onStatusChanged?()
         }
         owner.onDocumentInvalidated = { [weak self] in
             self?.rotateSession(reason: "webContentProcessTerminated")
