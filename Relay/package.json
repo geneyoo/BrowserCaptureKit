@@ -1,0 +1,20 @@
+{
+  "name": "phone-browser-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Command service and evidence adapter for a paired Phone Browser device.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "mcp": "node src/mcp.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ws": "8.21.3",
+    "zod": "^3.25.0"
+  }
+}
