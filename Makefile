@@ -1,9 +1,10 @@
 SHELL := /bin/bash
 
-.PHONY: generate build test conformance conformance-device verify
+.PHONY: generate build test conformance conformance-device phone-browser phone-browser-device phone-browser-e2e relay-test verify
 
 generate:
 	@xcodegen generate --spec Conformance/project.yml
+	@xcodegen generate --spec PhoneBrowser/project.yml
 
 build:
 	@./scripts/xcodebuild.sh build-for-testing
@@ -17,4 +18,18 @@ conformance:
 conformance-device:
 	@./scripts/conformance.sh device
 
-verify: build test conformance
+phone-browser:
+	@./scripts/phone-browser.sh simulator
+
+phone-browser-device:
+	@./scripts/phone-browser.sh device
+
+relay-test:
+	@cd Relay && npm ci --no-audit --no-fund && npm test
+
+# Signed simulator build + relay + counter workflow; not part of `verify`
+# because it installs a signed app and binds a local port.
+phone-browser-e2e:
+	@./scripts/phone-browser-e2e.sh simulator
+
+verify: build test conformance phone-browser relay-test
