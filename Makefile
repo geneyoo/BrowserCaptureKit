@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: generate build test conformance conformance-device phone-browser phone-browser-device phone-browser-e2e relay-test verify
+.PHONY: generate build test conformance conformance-device phone-browser phone-browser-device phone-browser-e2e phone-browser-e2e-device relay-test verify
 
 generate:
 	@xcodegen generate --spec Conformance/project.yml
@@ -31,5 +31,8 @@ relay-test:
 # because it installs a signed app and binds a local port.
 phone-browser-e2e:
 	@./scripts/phone-browser-e2e.sh simulator
+
+phone-browser-e2e-device:
+	@./scripts/phone-browser-e2e.sh device
 
 verify: build test conformance phone-browser relay-test
