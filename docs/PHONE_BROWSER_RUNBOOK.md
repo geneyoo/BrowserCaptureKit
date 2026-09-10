@@ -139,18 +139,32 @@ with `FIXTURE_URL` pointing at the relay address the phone can reach.
 
 ## Gate 0 on a physical iPhone
 
-Not yet run. Requirements and steps:
+Run on 2026-09-10 with an iPhone 16 Pro on iOS 26.6.1, Xcode 26.6, free
+provisioning under team `H32EKFDL92`, the relay on the Mac's Wi-Fi address,
+and the phone on the same Wi-Fi. `make phone-browser-e2e-device` automates it
+(`BCK_RELAY_HOST` overrides the address the phone uses to reach the relay).
 
-1. iPhone on iOS 17+, developer mode on, signed with team `H32EKFDL92`
+| Probe | Result |
+| --- | --- |
+| Hosted tests on the phone (`make phone-browser-device`) | 27 passed |
+| Pair, navigate, observe with image, fill, tap, re-observe | passed; server counter 1; duplicate command ID returned the saved result; stale observation rejected; no fill text in exported events |
+| Transport | the device socket's peer was the phone's Wi-Fi address, not the USB link; the Mac is only needed for install |
+| First launch | iOS shows the local-network permission prompt; until it is allowed the pairing request never reaches the relay and the app shows the pairing error |
+| Backgrounding the app | the socket drops within a few seconds (iOS suspends it); the relay reports `disconnected`, not `foregroundRequired`; returning to the foreground reconnected in about a second with the same session and commands resumed |
+| Relay restart | the phone reconnected on its own within the first backoff step; the same credential was accepted and commands resumed with the same session |
+| App process termination | reconnected in about a second with a new session ID; the page was back at `about:blank`, so live page state did not survive, as expected |
+| Screenshot scope | `ObservationImage.scope` is `webViewViewport`; the image is the web view's viewport at device scale, never the full screen |
+
+Not yet measured: cellular (needs a relay reachable from the internet behind
+TLS), lock/auto-lock behavior over hours, and signing expiry. For the
+foreground deployment posture, disable auto-lock and keep the phone powered.
+
+Requirements and steps for another phone:
+
+1. iOS 17+, developer mode on, signed with team `H32EKFDL92`
    (`BCK_DEVELOPMENT_TEAM` overrides). Free-provisioning signatures expire
    weekly; note the install date.
 2. Run the relay on a host reachable from the phone (LAN IP, or a TLS proxy for
-   cellular). On the phone, iOS asks for local-network permission on first use.
-3. Pair, then run the counter workflow above over Wi-Fi and over cellular with
-   the Mac disconnected.
-4. Record: whether commands complete with no Mac attached, screenshot scope,
-   the local-network and signing prompts hit, and how long the app stays
-   foreground before the phone locks (auto-lock must be disabled for the
-   foreground deployment posture).
-
-`make phone-browser-device` runs the hosted tests on the attached phone.
+   cellular). On the phone, allow local network access when asked.
+3. Pair, then run the counter workflow over Wi-Fi, and over cellular once a
+   public relay exists, with the Mac disconnected.

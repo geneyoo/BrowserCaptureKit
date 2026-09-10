@@ -3,8 +3,8 @@
 Updated: 2026-09-10. Status: design record. The first slice from section 12
 (foreground host, relay, remote observe/navigate/tap/fill/events/status) is
 implemented in `PhoneBrowser/` and `Relay/`; see
-[PHONE_BROWSER_RUNBOOK.md](PHONE_BROWSER_RUNBOOK.md) for what is verified.
-Gate 0 on a physical iPhone has not been run.
+[PHONE_BROWSER_RUNBOOK.md](PHONE_BROWSER_RUNBOOK.md) for what is verified,
+including the Gate 0 run on a physical iPhone over Wi-Fi (cellular untested).
 
 ## 1. Product outcome
 
