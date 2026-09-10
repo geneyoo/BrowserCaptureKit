@@ -24,6 +24,13 @@ public final class BrowserCaptureSession: NSObject {
         }
     }
 
+    /// WebKit terminated the web content process. The document, its JavaScript
+    /// heap, and every element identity are gone: the session bumps `pageEpoch`
+    /// and drops child-frame routes before this fires, so any snapshot-bound
+    /// target captured earlier fails as `.staleSnapshot`. The host decides
+    /// whether to reload; the session never reloads on its own.
+    public var onWebContentProcessTerminated: (() -> Void)?
+
     public private(set) var webView: WKWebView?
 
     private let messageHandlerName = "browserCapture"
@@ -302,14 +309,21 @@ public final class BrowserCaptureSession: NSObject {
         )
     }
 
+    /// The current document can no longer be trusted (navigation started or the
+    /// content process died): element identities and child-frame routes captured
+    /// against it must fail closed.
+    func invalidateDocument() {
+        pageEpoch += 1
+        // The new page's child frames are unknown; a stale route must
+        // never actuate into the wrong document.
+        invalidateChildFrameRoutes()
+    }
+
     func emit(_ event: BrowserCaptureEvent) {
         switch event {
         case .page(let event):
             if event.kind == .navigationStarted {
-                pageEpoch += 1
-                // The new page's child frames are unknown; a stale route must
-                // never actuate into the wrong document.
-                invalidateChildFrameRoutes()
+                invalidateDocument()
             }
             if event.kind == .navigationFinished || event.kind == .navigationFailed {
                 completeNavigationWaiters(with: event)

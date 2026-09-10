@@ -37,6 +37,11 @@ extension BrowserCaptureSession: WKNavigationDelegate {
         emitPageEvent(kind: .navigationFailed, webView: webView, message: error.localizedDescription)
     }
 
+    public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        invalidateDocument()
+        onWebContentProcessTerminated?()
+    }
+
     private func emitNavigationAction(_ navigationAction: WKNavigationAction) {
         let request = navigationAction.request
         emit(
